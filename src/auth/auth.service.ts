@@ -15,7 +15,10 @@ export class AuthService {
     
     async login(login: LoginDto) {
         const user: User = await this.userService.findOne({ username: login.username })
-        
+
+      if (!user) {
+        throw Error(`User and password pair not found`)
+      }
         
         if (!bcrypt.compareSync(login.password, user.password)) {
             throw Error(`User and password pair not found`)
