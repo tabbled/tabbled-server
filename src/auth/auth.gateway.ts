@@ -12,11 +12,17 @@ export class AuthGateway {
         try {
             const jwt: string = await this.authService.login(loginDto)
             return {
+                success: true,
                 jwt: jwt
             }
         } catch (e) {
             console.error(e)
             client.emit('exception', {error: e.toString()})
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+
         }
         
     }

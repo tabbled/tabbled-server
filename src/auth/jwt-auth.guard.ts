@@ -1,8 +1,7 @@
 /* eslint-disable prettier/prettier */
 import {
     ExecutionContext,
-    Injectable,
-    UnauthorizedException,
+    Injectable
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
@@ -18,18 +17,19 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         // Add your custom authentication logic here
         // for example, call super.logIn(request) to establish a session.
         const request = context.switchToHttp().getRequest();
-        const auth = context.getArgByIndex(0)['handshake']['auth']
-        console.log(auth.jwt)
+        const client = context.getArgByIndex(0);
+        const auth = client['handshake']['auth'];
     
         try {
             const payload = this.jwtService.verify(auth.jwt);
             // append user and poll to socket
-            request.userID = payload.sub;
-            request.pollID = payload.pollID;
-            request.name = payload.name;
+            request.username = payload.username;
+            request.userId = payload.userId;
             return true;
         } catch(e) {
-            throw new UnauthorizedException(e.toString());
+            console.error(e)
+            client.emit('login_needed', {})
+            throw e
         }
     }
 }

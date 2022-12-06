@@ -19,28 +19,52 @@ export class UsersGateway {
     
     @WebSocketServer()
     server: Server;
+
+    @SubscribeMessage('users/me')
+    async me(@ConnectedSocket() client: Socket) {
+
+        try {
+            let user = await this.usersService.findOne({id: client['userId']});
+            return {
+                success: true,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    firstname: user.firstname,
+                    lastname: user.lastname,
+                    accounts: []
+                }
+            };
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false
+            }
+        }
+
+    }
     
-    @SubscribeMessage('inviteUser')
+    @SubscribeMessage('users/inviteUser')
     create(@MessageBody() invite: InviteUserDto, @ConnectedSocket() client: Socket) {
         return this.usersService.invite(invite)
     }
 
-    @SubscribeMessage('getUsers')
+    @SubscribeMessage('users/getUsers')
     getAll(@MessageBody() account_id: number, @ConnectedSocket() client: Socket) {
         return this.usersService.findMany(account_id);
     }
 
-    @SubscribeMessage('findOneUser')
+    @SubscribeMessage('users/findOneUser')
     findOne(@MessageBody() where: any) {
         return this.usersService.findOne(where);
     }
 
-    @SubscribeMessage('updateUser')
+    @SubscribeMessage('users/updateUser')
     update(@MessageBody() updateUserDto: UpdateUserDto, id: number) {
         return this.usersService.update(id, updateUserDto);
     }
 
-    @SubscribeMessage('removeUser')
+    @SubscribeMessage('users/removeUser')
     remove(@MessageBody() id: number) {
         return this.usersService.remove(id);
     }

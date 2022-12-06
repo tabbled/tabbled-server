@@ -24,7 +24,7 @@ export class AuthService {
             throw Error(`User and password pair not found`)
         }
         
-        const payload = { username: login.username, sub: login.username };
+        const payload = { username: login.username, userId: user.id };
         return this.jwtService.sign(payload, {
             expiresIn: '7 days'
         })
