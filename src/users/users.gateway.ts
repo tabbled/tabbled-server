@@ -25,6 +25,18 @@ export class UsersGateway {
 
         try {
             let user = await this.usersService.findOne({id: client['userId']});
+            let settings = await this.usersService.accountSettings(client['userId']);
+
+            let accounts = [];
+            settings.forEach(item => {
+                accounts.push({
+                    id: item.acc_id,
+                    name: item.acc_name,
+                    permissions: item.au_permissions,
+                    active: item.au_active,
+                })
+            })
+
             return {
                 success: true,
                 user: {
@@ -32,7 +44,8 @@ export class UsersGateway {
                     username: user.username,
                     firstname: user.firstname,
                     lastname: user.lastname,
-                    accounts: []
+                    settings: user.settings,
+                    accounts: accounts
                 }
             };
         } catch (e) {

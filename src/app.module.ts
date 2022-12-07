@@ -5,7 +5,9 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { User } from "./users/entities/user.entity";
+import { AccountUsers, User } from "./users/entities/user.entity";
+import { AccountsModule } from './accounts/accounts.module';
+import { Account } from "./accounts/entities/account.entity"
 
 @Module({
     imports: [
@@ -23,9 +25,12 @@ import { User } from "./users/entities/user.entity";
             database: process.env.DB_DATABASE,
             autoLoadEntities: true,
             entities: [
-                User
+                User,
+                Account,
+                AccountUsers
             ]
-        })
+        }),
+        AccountsModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],
