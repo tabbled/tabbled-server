@@ -9,9 +9,8 @@ export class ConfigurationService {
 
   async getAll() : Promise<Configuration> {
     return {
-        entities: mockEntities,
-        tableModels: [],
-        reportTemplates: []
+        dataSources: mockEntities,
+        pages: []
     };
   }
 }
@@ -19,11 +18,12 @@ export class ConfigurationService {
 // temp entities implementations
 let mockEntities = [{
     id: 1,
-    name: "Типы цен",
+    title: "Типы цен",
+    alias: "price_types",
     is_tree: false,
     fields: [
         {
-            "code": "name",
+            "alias": "name",
             "type": "string",
             "title": "Наименование",
             "default": "",
@@ -31,14 +31,14 @@ let mockEntities = [{
             "is_system": true
         },
         {
-            "code": "round",
+            "alias": "round",
             "type": "numeric",
             "title": "Округление",
             "default": "0",
             "decimals": 0
         },
         {
-            "code": "discount",
+            "alias": "discount",
             "type": "numeric",
             "title": "Скидка",
             "default": "0",
@@ -47,11 +47,12 @@ let mockEntities = [{
     ]
 }, {
     id: 2,
-    name: "Клиенты",
+    title: "Клиенты",
+    alias: "clients",
     is_tree: false,
     fields: [
         {
-            "code": "name",
+            "alias": "name",
             "type": "string",
             "title": "Name",
             "default": "",
@@ -59,22 +60,22 @@ let mockEntities = [{
             "is_system": true
         },
         {
-            "code": "phone",
+            "alias": "phone",
             "type": "string",
             "title": "Телефон"
         },
         {
-            "code": "Email",
+            "alias": "Email",
             "type": "string",
             "title": "Email"
         },
         {
-            "code": "city",
+            "alias": "city",
             "type": "string",
             "title": "City"
         },
         {
-            "code": "address",
+            "alias": "address",
             "type": "string",
             "title": "Address"
         }
