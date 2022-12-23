@@ -1,5 +1,5 @@
 export interface Configuration {
-    entities: object[],
-    tableModels: object[],
-    reportTemplates: object[]
+    dataSources: object[],
+    pages: object[],
+    sidebarMenu: object[]
 }

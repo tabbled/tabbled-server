@@ -24,6 +24,7 @@ export class UsersGateway {
     async me(@ConnectedSocket() client: Socket) {
 
         try {
+
             let user = await this.usersService.findOne({id: client['userId']});
             let settings = await this.usersService.accountSettings(client['userId']);
 
