@@ -8,7 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AccountUsers, User } from "./users/entities/user.entity";
 import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
-import { ConfigurationModule } from './configuration/configuration.module';
+import { DataItemModule } from './dataitem/dataitem.module';
 
 @Module({
     imports: [
@@ -32,7 +32,7 @@ import { ConfigurationModule } from './configuration/configuration.module';
             ]
         }),
         AccountsModule,
-        ConfigurationModule
+        DataItemModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],

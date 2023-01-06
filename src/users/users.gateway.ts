@@ -55,7 +55,6 @@ export class UsersGateway {
                 success: false
             }
         }
-
     }
     
     @SubscribeMessage('users/inviteUser')
