@@ -17,6 +17,9 @@ export class DataItem {
     @Column({ type: "bigint", name: 'rev'})
     rev: number;
 
+    @Column({ type: "bigint", name: 'version'})
+    ver: number;
+
     @Column({ type: "int", name: "account_id"})
     accountId: number;
 

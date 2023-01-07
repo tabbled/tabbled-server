@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { DataItemType } from "../entities/dataitem.entity";
+import { DataItem, DataItemType } from "../entities/dataitem.entity";
 
 export class DataItemRequestDto {
     @ApiProperty()
@@ -7,4 +7,14 @@ export class DataItemRequestDto {
 
     @ApiProperty()
     filters?: object | undefined
+}
+
+export class DataItemRequestSyncDto {
+    @ApiProperty()
+    type: DataItemType
+
+    @ApiProperty()
+    lastRevision: number
+
+    data: Array<DataItem>
 }

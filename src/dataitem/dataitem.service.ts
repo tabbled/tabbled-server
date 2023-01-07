@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataItem } from "./entities/dataitem.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { DataItemDto } from "./dto/dataitem.dto";
 
 @Injectable()
 export class DataItemService {
@@ -15,5 +16,9 @@ export class DataItemService {
             accountId: accountId,
             type: type
         })
+    }
+
+    async update(data: DataItemDto) {
+        console.log('update', data)
     }
 }
