@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+
+  server:
+    build: .
+    container_name: "tabbled-server"
+    restart: always
+    command: npm run start:prod
+    ports:
+      - "3000:3000"
+    networks:
+      - tabbled
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_DATABASE=tabbled
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+
+networks:
+  tabbled:
+    external: true

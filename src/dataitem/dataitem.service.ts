@@ -19,6 +19,9 @@ export class DataItemService {
     }
 
     async update(data: DataItemDto) {
-        console.log('update', data)
+        const item = await this.dataItemsRepository.findBy({
+            id: data.id,
+        })
+        console.log('update', item)
     }
 }

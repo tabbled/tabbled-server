@@ -19,9 +19,9 @@ export class DataItemGateway {
         }
     }
 
-    @SubscribeMessage('data/syncMany')
+    @SubscribeMessage('data/sync')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        console.log('DataItems.syncMany, ', msg)
+        console.log('DataItems.sync, ', msg)
 
         for (let i in msg.data) {
             await this.dataItemService.update(msg.data[i])

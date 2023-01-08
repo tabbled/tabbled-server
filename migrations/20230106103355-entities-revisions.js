@@ -23,6 +23,7 @@ exports.up = async function(db) {
     "CREATE TABLE data_items (" +
     "id  bigint PRIMARY KEY," +
     "rev bigint," +
+    "version int," +
     "account_id int NOT NULL REFERENCES accounts(id) ON DELETE NO ACTION ON UPDATE CASCADE," +
     "alias varchar(100) NOT NULL," +
     "type data_item_type NOT NULL, " +
@@ -35,7 +36,8 @@ exports.up = async function(db) {
     "deleted_by int REFERENCES users(id) ON DELETE NO ACTION ON UPDATE CASCADE" +
     ");"+
     "CREATE TABLE revisions (" +
-    "id bigserial PRIMARY KEY, " +
+    "id bigserial PRIMARY KEY," +
+    "version int," +
     "item_id  bigint," +
     "alias varchar(100) NOT NULL," +
     "type data_item_type NOT NULL, " +
