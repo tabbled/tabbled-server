@@ -13,3 +13,5 @@ RUN npm install -g db-migrate-pg
 COPY . .
 
 RUN npm run build
+
+EXPOSE 3000

@@ -44,7 +44,7 @@ export class DataItem {
     @Column({ type: "int", name: "created_by" } )
     public createdBy: number;
 
-    @Column({ type: "int", name: "updated_at" } )
+    @Column({ type: "int", name: "updated_by" } )
     public updatedBy: number;
 
     @Column({ type: "int", name: "deleted_by",} )

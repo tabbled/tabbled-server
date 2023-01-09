@@ -24,7 +24,7 @@ export class DataItemGateway {
         console.log('DataItems.sync, ', msg)
 
         for (let i in msg.data) {
-            await this.dataItemService.update(msg.data[i])
+            await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
         }
 
         //let data = await this.dataItemService.getMany(client['userId'], msg.type)

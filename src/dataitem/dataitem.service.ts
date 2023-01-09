@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataItem } from "./entities/dataitem.entity";
+import { DataItem, DataItemType } from "./entities/dataitem.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { DataItemDto } from "./dto/dataitem.dto";
@@ -18,10 +18,36 @@ export class DataItemService {
         })
     }
 
-    async update(data: DataItemDto) {
-        const item = await this.dataItemsRepository.findBy({
+    async update(type: DataItemType, data: DataItemDto, accountId: number, userId: number) {
+        const items = await this.dataItemsRepository.findBy({
             id: data.id,
         })
-        console.log('update', item)
+
+        let item = items.length > 0 ? items[0] : null;
+
+
+        console.log('update', accountId, userId)
+
+        // if (item)
+        //
+        if (!item) {
+            let r = await this.dataItemsRepository.createQueryBuilder()
+                .insert()
+                .into(DataItem)
+                .values({
+                    id: data.id,
+                    rev: data.rev,
+                    ver: data.ver,
+                    alias: data.alias,
+                    type: type,
+                    accountId: accountId,
+                    data: data.data,
+                })
+                .execute()
+
+            console.log('inset item', r)
+        }
+
+
     }
 }
