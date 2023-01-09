@@ -21,7 +21,7 @@ services:
     container_name: postgres
     image: postgres:12-alpine
     ports:
-      - '5432'
+      - '5432:${DB_PORT}'
     volumes:
       - pg_data:/data/db
     environment:
@@ -31,9 +31,4 @@ services:
 
 volumes:
   pg_data:
-    external: true
-
-
-networks:
-  tabbled:
     external: true
