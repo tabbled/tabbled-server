@@ -4,7 +4,11 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 
+COPY entrypoint.sh ./
+
 RUN npm install
+RUN npm install -g db-migrate
+RUN npm install -g db-migrate-pg
 
 COPY . .
 

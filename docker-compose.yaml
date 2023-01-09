@@ -6,16 +6,32 @@ services:
     build: .
     container_name: "tabbled-server"
     restart: always
-    command: npm run start:prod
+    entrypoint: ["/bin/sh", "./entrypoint.sh"]
     ports:
       - "3000:3000"
-    networks:
-      - tabbled
     environment:
-      - DB_HOST=host.docker.internal
-      - DB_DATABASE=tabbled
+      - DB_HOST=db
+      - DB_PORT=5432
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+
+  db:
+    container_name: postgres
+    image: postgres:12-alpine
+    ports:
+      - '5432'
+    volumes:
+      - pg_data:/data/db
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_DATABASE}
+
+volumes:
+  pg_data:
+    external: true
 
 
 networks:
