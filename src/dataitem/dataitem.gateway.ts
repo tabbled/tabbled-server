@@ -21,16 +21,17 @@ export class DataItemGateway {
 
     @SubscribeMessage('data/sync')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        console.log('DataItems.sync, ', msg)
+        console.log('DataItems.sync')
 
         for (let i in msg.data) {
             await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
         }
 
-        //let data = await this.dataItemService.getMany(client['userId'], msg.type)
+        let data = await this.dataItemService.getManyAfterRevision(client['userId'], msg.type, Number(msg.lastRevision))
 
         return {
             success: true,
+            data: data
         }
     }
 

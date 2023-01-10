@@ -1,7 +1,7 @@
 import {
     Entity,
     Column,
-    PrimaryColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn
+    PrimaryColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn
 } from "typeorm";
 
 export enum DataItemType {
@@ -47,17 +47,26 @@ export class DataItem {
     @Column({ type: "int", name: "updated_by" } )
     public updatedBy: number;
 
-    @Column({ type: "int", name: "deleted_by",} )
+    @Column({ type: "int", name: "deleted_by" } )
     public deletedBy?: number;
 }
 
 @Entity({name: "revisions"})
 export class Revision {
-    @PrimaryColumn({ type: "bigint"})
-    id: number;
+    @PrimaryGeneratedColumn({ type: "bigint"})
+    id: BigInteger;
 
-    @Column({ type: "int"})
-    account_id: number;
+    @Column({ type: "int", name: "account_id"})
+    accountId: number;
+
+    @Column({ type: "int", name: "version"})
+    ver: number
+
+    @Column({ type: "int", name: "item_id"})
+    itemId: BigInteger
+
+    @Column( {type: "int"} )
+    alias: string;
 
     @Column( {"enum": DataItemType } )
     type: string;
@@ -65,9 +74,9 @@ export class Revision {
     @Column({ type: "jsonb"})
     data: object;
 
-    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(3)" })
-    public created_at: Date;
+    @CreateDateColumn({ type: "timestamp", name: "created_at", default: () => "CURRENT_TIMESTAMP(3)" })
+    public createdAt: Date;
 
-    @Column({ type: "int" } )
-    public created_by: number;
+    @Column({ type: "int", name: "created_by" } )
+    public createdBy: number;
 }

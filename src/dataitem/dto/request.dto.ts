@@ -14,7 +14,7 @@ export class DataItemRequestSyncDto {
     type: DataItemType
 
     @ApiProperty()
-    lastRevision: number
+    lastRevision: string
 
     data: Array<DataItem>
 }

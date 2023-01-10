@@ -9,6 +9,7 @@ import { AccountUsers, User } from "./users/entities/user.entity";
 import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
 import { DataItemModule } from './dataitem/dataitem.module';
+import { DataItem, Revision } from "./dataitem/entities/dataitem.entity";
 
 @Module({
     imports: [
@@ -28,7 +29,9 @@ import { DataItemModule } from './dataitem/dataitem.module';
             entities: [
                 User,
                 Account,
-                AccountUsers
+                AccountUsers,
+                Revision,
+                DataItem
             ]
         }),
         AccountsModule,
