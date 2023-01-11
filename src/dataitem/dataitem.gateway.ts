@@ -22,17 +22,40 @@ export class DataItemGateway {
     @SubscribeMessage('data/sync')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
         console.log('DataItems.sync')
-
-        for (let i in msg.data) {
-            await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
+        if (!client['accountId'] || !client['userId']) {
+            console.error("No accountId or userId, accountId =", client['accountId'], ", userId = ", client['userId'])
+            return {
+                success: false,
+                error_message: "Server error"
+            }
         }
 
-        let data = await this.dataItemService.getManyAfterRevision(client['userId'], msg.type, Number(msg.lastRevision))
+        try {
+            for (let i in msg.data) {
+                console.log(i)
+                console.log(msg.data[i])
+                await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
+                console.log(i)
+            }
 
-        return {
-            success: true,
-            data: data
+            let data = await this.dataItemService.getManyAfterRevision(client['accountId'], msg.type, Number(msg.lastRevision))
+
+            return {
+                success: true,
+                data: data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+
+            }
         }
+
+
+
+
     }
 
 }

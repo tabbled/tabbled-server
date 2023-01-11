@@ -8,7 +8,7 @@ export class DataItemDto {
     rev: number
 
     @ApiProperty()
-    ver: number
+    version: number
 
     @ApiProperty()
     alias: string

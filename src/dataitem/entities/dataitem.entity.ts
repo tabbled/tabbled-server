@@ -1,7 +1,7 @@
 import {
     Entity,
     Column,
-    PrimaryColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn
+    PrimaryColumn, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn
 } from "typeorm";
 
 export enum DataItemType {
@@ -18,7 +18,7 @@ export class DataItem {
     rev: number;
 
     @Column({ type: "bigint", name: 'version'})
-    ver: number;
+    version: number;
 
     @Column({ type: "int", name: "account_id"})
     accountId: number;
@@ -38,7 +38,7 @@ export class DataItem {
     @UpdateDateColumn({ type: "timestamp", name: "updated_at", default: () => "CURRENT_TIMESTAMP(3)" })
     public updatedAt: Date;
 
-    @DeleteDateColumn({ type: "timestamp", name: "deleted_at" })
+    @Column({ type: "timestamp", name: "deleted_at" })
     public deletedAt?: Date;
 
     @Column({ type: "int", name: "created_by" } )
@@ -60,7 +60,7 @@ export class Revision {
     accountId: number;
 
     @Column({ type: "int", name: "version"})
-    ver: number
+    version: number
 
     @Column({ type: "int", name: "item_id"})
     itemId: BigInteger

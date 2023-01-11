@@ -21,7 +21,6 @@ export class DataItemService {
     }
 
     async getManyAfterRevision(accountId: number, type: any, rev: number): Promise<any> {
-        console.log(rev)
         return await this.dataItemsRepository.findBy({
             accountId: accountId,
             type: type,
@@ -33,7 +32,10 @@ export class DataItemService {
         const item = await this.dataItemsRepository.findOne({
             where: {id: data.id}
         })
+
         console.log(item)
+
+
         console.log('update', accountId, userId)
 
         //console.log(this.datasource)
@@ -47,7 +49,7 @@ export class DataItemService {
             let revRes = await queryRunner.manager.insert(Revision, {
                 type: type,
                 alias: data.alias,
-                ver: data.ver,
+                version: data.version,
                 accountId: accountId,
                 data: data.data,
                 createdBy: userId
@@ -70,7 +72,7 @@ export class DataItemService {
                     .values({
                         id: data.id,
                         rev: newRevision,
-                        ver: data.ver,
+                        version: data.version,
                         alias: data.alias,
                         type: type,
                         accountId: accountId,
@@ -89,7 +91,7 @@ export class DataItemService {
                     .update(DataItem)
                     .set({
                         rev: newRevision,
-                        ver: data.ver,
+                        version: data.version,
                         alias: data.alias,
                         type: type,
                         accountId: accountId,
