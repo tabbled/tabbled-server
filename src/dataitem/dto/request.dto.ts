@@ -13,8 +13,13 @@ export class DataItemRequestSyncDto {
     @ApiProperty()
     type: DataItemType
 
+    data: Array<DataItem>
+}
+
+export class DataItemRequestChangesDto {
+    @ApiProperty()
+    type: DataItemType
+
     @ApiProperty()
     lastRevision: string
-
-    data: Array<DataItem>
 }

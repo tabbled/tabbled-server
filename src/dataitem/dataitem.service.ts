@@ -29,20 +29,14 @@ export class DataItemService {
     }
 
     async update(type: DataItemType, data: DataItemDto, accountId: number, userId: number) {
-        const item = await this.dataItemsRepository.findOne({
-            where: {id: data.id}
-        })
-
-        console.log(item)
-
-
-        console.log('update', accountId, userId)
-
-        //console.log(this.datasource)
-
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
+        const item = await queryRunner.manager.findOne(DataItem, {
+            where: {
+                id: data.id
+            }
+        })
         let newRevision = null
 
         try {
@@ -107,12 +101,13 @@ export class DataItemService {
                     })
                     .execute()
             }
-
-
             await queryRunner.commitTransaction()
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
         }
+
+        await queryRunner.release();
     }
+
 }

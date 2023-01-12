@@ -20,7 +20,7 @@ export class DataItem {
     @Column({ type: "bigint", name: 'version'})
     version: number;
 
-    @Column({ type: "int", name: "account_id"})
+    @Column({ type: "int", name: "account_id", select: false})
     accountId: number;
 
     @Column({ type: "int", name: "alias"})
