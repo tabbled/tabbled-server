@@ -1,12 +1,18 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket } from "@nestjs/websockets";
+import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, WebSocketServer } from "@nestjs/websockets";
 import { DataItemService } from './dataitem.service';
 import { DataItemResponseDto } from "./dto/response.dto";
 import { DataItemRequestChangesDto, DataItemRequestDto, DataItemRequestSyncDto } from "./dto/request.dto";
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
+@UseGuards(JwtAuthGuard)
 @WebSocketGateway()
 export class DataItemGateway {
     constructor(private readonly dataItemService: DataItemService) {}
+
+    @WebSocketServer()
+    server: Server;
 
     @SubscribeMessage('data/getMany')
     async getMany(@MessageBody() msg: DataItemRequestDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
@@ -28,15 +34,13 @@ export class DataItemGateway {
                 error_message: "Server error"
             }
         }
-
-        //console.log(msg.data)
         try {
             for (let i in msg.data) {
                 await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
             }
 
             if (msg.data.length > 0)
-                client.emit('data/changes', {
+                this.server.emit(`${client['accountId']}/data/changed`, {
                     type: msg.type
                 })
 
