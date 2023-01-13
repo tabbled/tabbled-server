@@ -20,6 +20,7 @@ services:
   db:
     container_name: postgres
     image: postgres:12-alpine
+    restart: always
     ports:
       - '5432:${DB_PORT}'
     volumes:
