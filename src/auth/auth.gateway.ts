@@ -8,9 +8,10 @@ export class AuthGateway {
     constructor(private readonly authService: AuthService) {}
 
     @SubscribeMessage('login')
-    async login(@MessageBody() loginDto: LoginDto, @ConnectedSocket() client: Socket) {
+    async login(@MessageBody() login: LoginDto, @ConnectedSocket() client: Socket) {
+        console.log("/login by user", login.username)
         try {
-            const jwt: string = await this.authService.login(loginDto)
+            const jwt: string = await this.authService.login(login)
             return {
                 success: true,
                 jwt: jwt
@@ -22,7 +23,6 @@ export class AuthGateway {
                 success: false,
                 error_message: e.toString()
             }
-
         }
         
     }

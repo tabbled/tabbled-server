@@ -26,7 +26,6 @@ export class DataItemGateway {
 
     @SubscribeMessage('data/sync')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        console.log('DataItems.sync')
         if (!client['accountId'] || !client['userId']) {
             console.error("No accountId or userId, accountId =", client['accountId'], ", userId = ", client['userId'])
             return {
@@ -34,6 +33,7 @@ export class DataItemGateway {
                 error_message: "Server error"
             }
         }
+        console.log('DataItems.sync, type =', msg.type, 'msg =', msg.data)
         try {
             for (let i in msg.data) {
                 await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])

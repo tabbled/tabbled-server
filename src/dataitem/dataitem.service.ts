@@ -28,13 +28,13 @@ export class DataItemService {
         })
     }
 
-    async update(type: DataItemType, data: DataItemDto, accountId: number, userId: number) {
+    async update(type: DataItemType, item: DataItemDto, accountId: number, userId: number) {
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        const item = await queryRunner.manager.findOne(DataItem, {
+        const current_item = await queryRunner.manager.findOne(DataItem, {
             where: {
-                id: data.id
+                id: item.id
             }
         })
         let newRevision = null
@@ -42,16 +42,17 @@ export class DataItemService {
         try {
             let revRes = await queryRunner.manager.insert(Revision, {
                 type: type,
-                alias: data.alias,
-                version: data.version,
+                alias: item.alias,
+                version: item.version,
                 accountId: accountId,
-                data: data.data,
+                data: item.data,
                 createdBy: userId
             })
             newRevision = revRes.identifiers[0].id;
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
+            await queryRunner.release();
             throw e;
         }
 
@@ -59,24 +60,24 @@ export class DataItemService {
             throw Error(`Revision didn't create for item`)
 
         try {
-            if (!item) {
+            if (!current_item) {
                 await queryRunner.manager.createQueryBuilder()
                     .insert()
                     .into(DataItem)
                     .values({
-                        id: data.id,
+                        id: item.id,
                         rev: newRevision,
-                        version: data.version,
-                        alias: data.alias,
+                        version: item.version,
+                        alias: item.alias,
                         type: type,
                         accountId: accountId,
-                        data: data.data,
-                        updatedBy: data.updatedBy,
-                        deletedBy: data.deletedBy,
-                        createdBy: data.createdBy,
-                        updatedAt: data.updatedAt,
-                        createdAt: data.createdAt,
-                        deletedAt: data.deletedAt
+                        data: item.data,
+                        updatedBy: item.updatedBy,
+                        deletedBy: item.deletedBy,
+                        createdBy: item.createdBy,
+                        updatedAt: item.updatedAt,
+                        createdAt: item.createdAt,
+                        deletedAt: item.deletedAt
                     })
                     .execute()
             } else {
@@ -85,29 +86,32 @@ export class DataItemService {
                     .update(DataItem)
                     .set({
                         rev: newRevision,
-                        version: data.version,
-                        alias: data.alias,
+                        version: item.version,
+                        alias: item.alias,
                         type: type,
                         accountId: accountId,
-                        data: data.data,
-                        updatedBy: data.updatedBy,
-                        deletedBy: data.deletedBy,
-                        createdBy: data.createdBy,
-                        updatedAt: data.updatedAt,
-                        createdAt: data.createdAt,
-                        deletedAt: data.deletedAt
+                        data: item.data,
+                        updatedBy: item.updatedBy,
+                        deletedBy: item.deletedBy,
+                        createdBy: item.createdBy,
+                        updatedAt: item.updatedAt,
+                        createdAt: item.createdAt,
+                        deletedAt: item.deletedAt
                     }).andWhere({
-                        id: data.id
+                        id: item.id
                     })
                     .execute()
             }
-            await queryRunner.commitTransaction()
+            await queryRunner.commitTransaction();
+            await queryRunner.release();
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
+            await queryRunner.release();
+            throw e;
         }
 
-        await queryRunner.release();
+
     }
 
 }
