@@ -4,8 +4,8 @@ import {
     PrimaryColumn, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn
 } from "typeorm";
 
-@Entity({name: "data_items"})
-export class DataItem {
+@Entity({name: "config"})
+export class ConfigItem {
     @PrimaryColumn({ type: "bigint"})
     id: number;
 
@@ -14,9 +14,6 @@ export class DataItem {
 
     @Column({ type: "bigint", name: 'version'})
     version: number;
-
-    @Column({ type: "int", name: "account_id", select: false})
-    accountId: number;
 
     @Column({ type: "int", name: "alias"})
     alias: string;
@@ -43,8 +40,8 @@ export class DataItem {
     public deletedBy?: number;
 }
 
-@Entity({name: "revisions"})
-export class Revision {
+@Entity({name: "config_revisions"})
+export class ConfigRevision {
     @PrimaryGeneratedColumn({ type: "bigint"})
     id: BigInteger;
 
@@ -56,9 +53,6 @@ export class Revision {
 
     @Column( {type: "int"} )
     alias: string;
-
-    @Column({ type: "int", name: "account_id", select: false})
-    accountId: number;
 
     @Column({ type: "jsonb"})
     data: object;

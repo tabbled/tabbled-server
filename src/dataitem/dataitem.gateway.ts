@@ -16,7 +16,7 @@ export class DataItemGateway {
 
     @SubscribeMessage('data/getMany')
     async getMany(@MessageBody() msg: DataItemRequestDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        let data = await this.dataItemService.getMany(client['userId'], msg.type)
+        let data = await this.dataItemService.getMany(client['accountId'])
 
         return {
             success: true,
@@ -24,7 +24,7 @@ export class DataItemGateway {
         }
     }
 
-    @SubscribeMessage('data/sync')
+    @SubscribeMessage('data/update')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
         if (!client['accountId'] || !client['userId']) {
             console.error("No accountId or userId, accountId =", client['accountId'], ", userId = ", client['userId'])
@@ -33,16 +33,14 @@ export class DataItemGateway {
                 error_message: "Server error"
             }
         }
-        console.log('DataItems.sync, type =', msg.type, 'msg =', msg.data)
+        console.log('DataItems.sync, ', 'msg =', msg.data)
         try {
             for (let i in msg.data) {
-                await this.dataItemService.update(msg.type, msg.data[i], client['accountId'], client['userId'])
+                await this.dataItemService.update(msg.data[i], client['accountId'], client['userId'])
             }
 
             if (msg.data.length > 0)
-                this.server.emit(`${client['accountId']}/data/changed`, {
-                    type: msg.type
-                })
+                this.server.emit(`${client['accountId']}/data/changed`, {})
 
             return {
                 success: true
@@ -52,15 +50,14 @@ export class DataItemGateway {
             return {
                 success: false,
                 error_message: e.toString()
-
             }
         }
     }
 
-    @SubscribeMessage('data/changes')
+    @SubscribeMessage('data/getChanges')
     async getChanges(@MessageBody() msg: DataItemRequestChangesDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
 
-        let data = await this.dataItemService.getManyAfterRevision(client['accountId'], msg.type, Number(msg.lastRevision))
+        let data = await this.dataItemService.getManyAfterRevision(client['accountId'], Number(msg.lastRevision))
 
         return {
             success: true,

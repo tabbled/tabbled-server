@@ -1,36 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { DataItem, Revision } from "./entities/dataitem.entity";
+import { DataSource, MoreThan, Repository } from "typeorm";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository, MoreThan } from "typeorm";
-import { DataItemDto } from "./dto/dataitem.dto";
+import { ConfigItem, ConfigRevision } from "./entities/config.entity";
 
 @Injectable()
-export class DataItemService {
-    constructor(@InjectRepository(DataItem)
-                private dataItemsRepository: Repository<DataItem>,
+export class ConfigService {
+    constructor(@InjectRepository(ConfigItem)
+                private dataItemsRepository: Repository<ConfigItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource) {
     }
 
-    async getMany(accountId: number, filter?: any): Promise<any> {
+    async getMany(filter?: any): Promise<any> {
         console.log(filter)
         return await this.dataItemsRepository.findBy({
-            accountId: accountId
         })
     }
 
-    async getManyAfterRevision(accountId: number, rev: number): Promise<any> {
+    async getManyAfterRevision(rev: number): Promise<any> {
         return await this.dataItemsRepository.findBy({
-            accountId: accountId,
             rev: MoreThan(rev)
         })
     }
 
-    async update(item: DataItemDto, accountId: number, userId: number) {
+    async update(item: ConfigItem, userId: number) {
+
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        const current_item = await queryRunner.manager.findOne(DataItem, {
+        const current_item = await queryRunner.manager.findOne(ConfigItem, {
             where: {
                 id: item.id
             }
@@ -38,10 +36,9 @@ export class DataItemService {
         let newRevision = null
 
         try {
-            let revRes = await queryRunner.manager.insert(Revision, {
+            let revRes = await queryRunner.manager.insert(ConfigRevision, {
                 alias: item.alias,
                 version: item.version,
-                accountId: accountId,
                 data: item.data,
                 createdBy: userId
             })
@@ -54,19 +51,18 @@ export class DataItemService {
         }
 
         if (!newRevision)
-            throw Error(`Revision didn't create for item`)
+            throw Error(`Revision didn't create for config item`)
 
         try {
             if (!current_item) {
                 await queryRunner.manager.createQueryBuilder()
                     .insert()
-                    .into(DataItem)
+                    .into(ConfigItem)
                     .values({
                         id: item.id,
                         rev: newRevision,
                         version: item.version,
                         alias: item.alias,
-                        accountId: accountId,
                         data: item.data,
                         updatedBy: item.updatedBy,
                         deletedBy: item.deletedBy,
@@ -79,12 +75,11 @@ export class DataItemService {
             } else {
                 await queryRunner.manager.createQueryBuilder()
                     .insert()
-                    .update(DataItem)
+                    .update(ConfigItem)
                     .set({
                         rev: newRevision,
                         version: item.version,
                         alias: item.alias,
-                        accountId: accountId,
                         data: item.data,
                         updatedBy: item.updatedBy,
                         deletedBy: item.deletedBy,

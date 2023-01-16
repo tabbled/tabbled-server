@@ -10,6 +10,8 @@ import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
 import { DataItemModule } from './dataitem/dataitem.module';
 import { DataItem, Revision } from "./dataitem/entities/dataitem.entity";
+import { ConfigModule as ConfigItemModule } from './config/config.module';
+import { ConfigItem, ConfigRevision } from "./config/entities/config.entity";
 
 @Module({
     imports: [
@@ -31,11 +33,14 @@ import { DataItem, Revision } from "./dataitem/entities/dataitem.entity";
                 Account,
                 AccountUsers,
                 Revision,
-                DataItem
+                DataItem,
+                ConfigItem,
+                ConfigRevision
             ]
         }),
         AccountsModule,
-        DataItemModule
+        DataItemModule,
+        ConfigItemModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],
