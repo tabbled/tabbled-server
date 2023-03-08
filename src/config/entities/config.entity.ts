@@ -19,7 +19,7 @@ export class ConfigItem {
     alias: string;
 
     @Column({ type: "jsonb"})
-    data: object;
+    data: any;
 
     @CreateDateColumn({ type: "timestamp", name: "created_at", default: () => "CURRENT_TIMESTAMP(3)" })
     public createdAt: Date;

@@ -1,8 +1,14 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { Controller, Get } from "@nestjs/common";
+let p = require('./../package.json');
 
-@UseGuards(JwtAuthGuard)
 @Controller()
 export class AppController {
     constructor() {}
+    @Get()
+    info() {
+        return {
+            app: 'Tabbled',
+            version: p.version
+        }
+    }
 }
