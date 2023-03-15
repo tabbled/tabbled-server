@@ -55,7 +55,11 @@ export class ConfigGateway {
     @SubscribeMessage('config/getChanges')
     async getChanges(@MessageBody() msg: any, @ConnectedSocket() client: Socket) : Promise<any> {
 
+        console.log('config/getChanges', msg)
+
         let data = await this.configService.getManyAfterRevision(Number(msg.lastRevision))
+
+        console.log(data)
 
         return {
             success: true,

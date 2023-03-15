@@ -13,6 +13,7 @@ import { DataItem, Revision } from "./dataitem/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module';
 import { ConfigItem, ConfigRevision } from "./config/entities/config.entity";
 import { FunctionsModule } from './functions/functions.module';
+import { PicturesModule } from './pictures/pictures.module';
 
 @Module({
     imports: [
@@ -42,7 +43,8 @@ import { FunctionsModule } from './functions/functions.module';
         AccountsModule,
         DataItemModule,
         ConfigItemModule,
-        FunctionsModule
+        FunctionsModule,
+        PicturesModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],
