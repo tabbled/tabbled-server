@@ -1,12 +1,22 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException, Get, Param } from "@nestjs/common";
+import {
+    Controller,
+    Post,
+    UseInterceptors,
+    UploadedFile,
+    BadRequestException,
+    Get,
+    Param,
+    HttpException, HttpStatus, Res
+} from "@nestjs/common";
 import { PicturesService } from './pictures.service';
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Response } from "express";
 
 @Controller('pictures')
 export class PicturesController {
     constructor(private readonly picturesService: PicturesService) {}
 
-    @Post('/upload')
+    @Post('')
     @UseInterceptors(FileInterceptor('ImageField'))
     async upload(@UploadedFile() file: Express.Multer.File) {
 
@@ -24,14 +34,24 @@ export class PicturesController {
     }
 
     @Get(':name')
-    async getOne(@Param('name') filename: string) {
-        // let file = ""
-        // try {
-        //     file = await this.picturesService.getOne(filename);
-        //     return file
-        // }catch (e) {
-        //     console.error(e)
-        //     throw new BadRequestException
-        // }
+    async getOne(
+        @Param('name') name: string,
+        @Res() response:Response
+    ) {
+        try {
+            let f = await this.picturesService.getOne(name)
+            response.setHeader('Content-Type', f.stat.metaData['content-type'])
+            response.setHeader('Origin-Filename', f.stat.metaData['origin-filename'])
+            return f.file.pipe(response);
+        }
+        catch (e) {
+            console.error(e.toString())
+            throw new HttpException({
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                error: e.toString(),
+            }, HttpStatus.INTERNAL_SERVER_ERROR, {
+                cause: e.toString()
+            });
+        }
     }
 }

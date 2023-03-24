@@ -14,6 +14,19 @@ var minioClient = new Client({
 
 @Injectable()
 export class PicturesService {
+
+    async getOne(name: string) {
+        try {
+            return {
+                stat: await minioClient.statObject(process.env.S3_BUCKET, name),
+                file: await minioClient.getObject(process.env.S3_BUCKET, name)
+            }
+        } catch (e) {
+            throw e
+        }
+
+    }
+
     async upload(uploadFile: any) {
 
         let filename = ""
