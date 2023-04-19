@@ -25,6 +25,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             request.username = payload.username;
             request.userId = payload.userId;
             request.accountId = auth.accountId
+
+            console.log(request)
+
             return true;
         } catch(e) {
             console.error(e)

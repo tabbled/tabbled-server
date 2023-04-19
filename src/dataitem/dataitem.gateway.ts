@@ -59,10 +59,13 @@ export class DataItemGateway {
 
         let data = await this.dataItemService.getManyAfterRevision(client['accountId'], Number(msg.lastRevision))
 
+        console.log('data/getChanges', msg, 'length data: ', data.length)
+
         return {
             success: true,
             data: data
         }
     }
+
 
 }

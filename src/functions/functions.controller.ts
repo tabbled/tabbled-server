@@ -12,6 +12,7 @@ export class FunctionsController {
         @Body() callFunctionDto: CallFunctionDto
     ) {
         //throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+        //console.log('functions.'+alias, callFunctionDto)
         try {
             return await this.functionsService.call(alias, callFunctionDto);
         } catch (e) {
