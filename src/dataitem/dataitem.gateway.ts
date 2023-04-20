@@ -5,8 +5,10 @@ import { DataItemRequestChangesDto, DataItemRequestDto, DataItemRequestSyncDto }
 import { Server, Socket } from "socket.io";
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AuthGuard } from "../auth/auth.guard";
 
-@UseGuards(JwtAuthGuard)
+
+@UseGuards(JwtAuthGuard, AuthGuard)
 @WebSocketGateway()
 export class DataItemGateway {
     constructor(private readonly dataItemService: DataItemService) {}
@@ -26,13 +28,6 @@ export class DataItemGateway {
 
     @SubscribeMessage('data/update')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        if (!client['accountId'] || !client['userId']) {
-            console.error("No accountId or userId, accountId =", client['accountId'], ", userId = ", client['userId'])
-            return {
-                success: false,
-                error_message: "Server error"
-            }
-        }
         console.log('DataItems.sync, ', 'msg =', msg.data)
         try {
             for (let i in msg.data) {
@@ -67,5 +62,22 @@ export class DataItemGateway {
         }
     }
 
+    @SubscribeMessage('data/import')
+    async import(@MessageBody() data: any, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('data/import')
+        try {
+            await this.dataItemService.import(data, client['accountId'], client['userId'])
+            this.server.emit(`data/changed`, {})
 
+            return {
+                success: true
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
 }

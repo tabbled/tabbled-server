@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DataItem, Revision } from "./entities/dataitem.entity";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository, MoreThan } from "typeorm";
+import { DataSource, Repository, MoreThan, QueryRunner } from "typeorm";
 import { DataItemDto } from "./dto/dataitem.dto";
+import { ConfigItem } from "../config/entities/config.entity";
 
 @Injectable()
 export class DataItemService {
@@ -32,6 +33,19 @@ export class DataItemService {
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
+        try {
+            await this.updateItem(queryRunner, item, accountId, userId)
+            await queryRunner.commitTransaction();
+            await queryRunner.release();
+        } catch (e) {
+            console.error(e)
+            await queryRunner.rollbackTransaction();
+            await queryRunner.release();
+            throw e;
+        }
+    }
+
+    async updateItem(queryRunner: QueryRunner, item: DataItemDto, accountId: number, userId: number) {
         const current_item = await queryRunner.manager.findOne(DataItem, {
             where: {
                 id: item.id
@@ -49,16 +63,13 @@ export class DataItemService {
             })
             newRevision = revRes.identifiers[0].id;
         } catch (e) {
-            console.error(e)
-            await queryRunner.rollbackTransaction();
-            await queryRunner.release();
             throw e;
         }
 
         if (!newRevision)
             throw Error(`Revision didn't create for item`)
 
-        try {
+
             if (!current_item) {
                 await queryRunner.manager.createQueryBuilder()
                     .insert()
@@ -99,14 +110,43 @@ export class DataItemService {
                     })
                     .execute()
             }
+    }
+
+    async updateBatch(queryRunner: QueryRunner, items: DataItemDto[], accountId: number, userId: number) {
+        for(let i in items) {
+            await this.updateItem(queryRunner, items[i], accountId, userId)
+        }
+    }
+
+    async import(data: any, accountId:number, userId: number) {
+        let dataSources = await this.getInternalDataSource()
+
+        let queryRunner = this.datasource.createQueryRunner()
+        await queryRunner.startTransaction()
+
+        try {
+            for (const i in dataSources) {
+                const alias = dataSources[i].alias
+
+                if (data[alias] && data[alias] instanceof Array) {
+                    await this.updateBatch(queryRunner, data[alias], accountId, userId)
+                }
+            }
             await queryRunner.commitTransaction();
             await queryRunner.release();
         } catch (e) {
-            console.error(e)
             await queryRunner.rollbackTransaction();
             await queryRunner.release();
             throw e;
         }
+    }
+
+    async getInternalDataSource() {
+        const rep = this.datasource.getRepository(ConfigItem);
+        return await rep.createQueryBuilder('ds')
+            .select([`data ->> 'alias' alias`])
+            .where(`alias = 'datasource' and deleted_at IS NULL and (data ->> 'source')::varchar = 'internal'`)
+            .getRawMany()
     }
 
 }

@@ -23,10 +23,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             const payload = this.jwtService.verify(auth.jwt);
             // append user and poll to socket
             request.username = payload.username;
-            request.userId = payload.userId;
-            request.accountId = auth.accountId
-
-            console.log(request)
+            request.userId = Number(payload.userId);
+            request.accountId = Number(auth.accountId);
 
             return true;
         } catch(e) {

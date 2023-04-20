@@ -4,11 +4,12 @@ import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Server, Socket } from "socket.io";
 import { ConfigImportDto } from "./dto/request.dto";
+import { AuthGuard } from "../auth/auth.guard";
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AuthGuard)
 @WebSocketGateway()
 export class ConfigGateway {
-  constructor(private readonly configService: ConfigService) {}
+    constructor(private readonly configService: ConfigService) {}
 
     @WebSocketServer()
     server: Server;
@@ -25,13 +26,6 @@ export class ConfigGateway {
 
     @SubscribeMessage('config/update')
     async syncMany(@MessageBody() msg: any, @ConnectedSocket() client: Socket) : Promise<any> {
-        if (!client['userId']) {
-            console.error("No userId", ", userId = ", client['userId'])
-            return {
-                success: false,
-                error_message: "Server error"
-            }
-        }
         console.log('ConfigItems.sync, ', 'msg =', msg.data)
         try {
             for (let i in msg.data) {
@@ -68,14 +62,6 @@ export class ConfigGateway {
 
     @SubscribeMessage('config/import')
     async import(@MessageBody() config: ConfigImportDto, @ConnectedSocket() client: Socket) : Promise<any> {
-        if (!client['userId']) {
-            console.error("No userId", ", userId = ", client['userId'])
-            return {
-                success: false,
-                error_message: "Server error"
-            }
-        }
-        //console.log('config/import', config)
 
         try {
             await this.configService.import(config, client['userId'])
@@ -91,10 +77,5 @@ export class ConfigGateway {
                 error_message: e.toString()
             }
         }
-
-
-
-
-
     }
 }

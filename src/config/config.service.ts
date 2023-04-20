@@ -69,9 +69,6 @@ export class ConfigService {
             })
             newRevision = revRes.identifiers[0].id;
         } catch (e) {
-            console.error(e)
-            await queryRunner.rollbackTransaction();
-            await queryRunner.release();
             throw e;
         }
 

@@ -48,5 +48,6 @@ import { PicturesModule } from './pictures/pictures.module';
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],
+
 })
 export class AppModule {}
