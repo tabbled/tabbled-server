@@ -22,6 +22,7 @@ export class UsersGateway {
 
     @SubscribeMessage('users/me')
     async me(@ConnectedSocket() client: Socket) {
+        console.log('users/me', client['userId'])
 
         try {
 
