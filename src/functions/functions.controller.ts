@@ -1,6 +1,5 @@
 import { Controller, Post, Body, Param, HttpException, HttpStatus } from "@nestjs/common";
 import { FunctionsService } from './functions.service';
-import { CallFunctionDto } from './dto/call-function.dto';
 
 @Controller('functions')
 export class FunctionsController {
@@ -9,12 +8,10 @@ export class FunctionsController {
     @Post(':alias')
     async call(
         @Param('alias') alias: string,
-        @Body() callFunctionDto: CallFunctionDto
+        @Body() body: any
     ) {
-        //throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-        //console.log('functions.'+alias, callFunctionDto)
         try {
-            return await this.functionsService.call(alias, callFunctionDto);
+            return await this.functionsService.call(alias, body);
         } catch (e) {
             throw new HttpException({
                 status: HttpStatus.INTERNAL_SERVER_ERROR,

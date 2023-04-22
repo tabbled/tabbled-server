@@ -4,10 +4,17 @@ import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository, MoreThan, QueryRunner } from "typeorm";
 import { DataItemDto } from "./dto/dataitem.dto";
 import { ConfigItem } from "../config/entities/config.entity";
+import { FunctionsService } from "../functions/functions.service";
+
+interface ItemChangeInterface {
+    old: DataItemDto | undefined,
+    new: DataItemDto | undefined
+}
 
 @Injectable()
 export class DataItemService {
-    constructor(@InjectRepository(DataItem)
+    constructor(private readonly functionsService: FunctionsService,
+                @InjectRepository(DataItem)
                 private dataItemsRepository: Repository<DataItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource) {
@@ -34,9 +41,11 @@ export class DataItemService {
         await queryRunner.startTransaction()
 
         try {
-            await this.updateItem(queryRunner, item, accountId, userId)
+            let change = await this.updateItem(queryRunner, item, accountId, userId)
             await queryRunner.commitTransaction();
             await queryRunner.release();
+
+            this.invokeEvents(change)
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
@@ -45,12 +54,17 @@ export class DataItemService {
         }
     }
 
-    async updateItem(queryRunner: QueryRunner, item: DataItemDto, accountId: number, userId: number) {
+    async updateItem(queryRunner: QueryRunner, item: DataItemDto, accountId: number, userId: number): Promise<ItemChangeInterface> {
         const current_item = await queryRunner.manager.findOne(DataItem, {
             where: {
                 id: item.id
             }
         })
+
+        let change: ItemChangeInterface = {
+            old: current_item,
+            new: item
+        }
         let newRevision = null
 
         try {
@@ -109,7 +123,12 @@ export class DataItemService {
                         id: item.id
                     })
                     .execute()
+
+                if (item.deletedAt && !current_item.deletedAt) {
+                    change.new = undefined
+                }
             }
+            return change
     }
 
     async updateBatch(queryRunner: QueryRunner, items: DataItemDto[], accountId: number, userId: number) {
@@ -119,7 +138,7 @@ export class DataItemService {
     }
 
     async import(data: any, accountId:number, userId: number) {
-        let dataSources = await this.getInternalDataSource()
+        let dataSources = await this.getInternalDataSources()
 
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
@@ -141,12 +160,48 @@ export class DataItemService {
         }
     }
 
-    async getInternalDataSource() {
+    async getInternalDataSources() {
         const rep = this.datasource.getRepository(ConfigItem);
         return await rep.createQueryBuilder('ds')
             .select([`data ->> 'alias' alias`])
             .where(`alias = 'datasource' and deleted_at IS NULL and (data ->> 'source')::varchar = 'internal'`)
             .getRawMany()
+    }
+
+    async getDataSource(alias: string) {
+        const rep = this.datasource.getRepository(ConfigItem);
+        let item = await rep.createQueryBuilder()
+            .where(`alias = 'datasource' AND (data ->> 'alias')::varchar = :alias and deleted_at IS NULL`, { alias: alias })
+            .getOne()
+        return item.data
+    }
+
+    async invokeEvents(change: ItemChangeInterface) {
+        console.log(change)
+        let alias = change.new?.alias || change.old?.alias
+
+        let ds = await this.getDataSource(alias)
+        if (!ds || !ds.eventHandlers || !ds.eventHandlers.length)
+            return
+
+        let event = ''
+        if (change.new && !change.old) event = 'onAdd'
+        else if (change.new && change.old) event = 'onUpdate'
+        else if (!change.new && change.old) event = 'onRemove'
+        else return
+
+        for(const i in ds.eventHandlers) {
+            let event_handler = ds.eventHandlers[i]
+            console.log(`Event handler for dataSource "${ds.alias}"- `, ds.eventHandlers)
+            if (event_handler.event === event && event_handler.handler.type === 'function') {
+
+                let func = await this.functionsService.getById(event_handler.handler.functionId)
+                //console.log('func', func)
+                await this.functionsService.call(func.alias, {
+                    context: change
+                })
+            }
+        }
     }
 
 }
