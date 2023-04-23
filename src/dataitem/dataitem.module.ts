@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { DataItemService } from './dataitem.service';
 import { DataItemGateway } from './dataitem.gateway';
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -8,7 +8,7 @@ import { FunctionsModule } from "../functions/functions.module";
 
 @Module({
     providers: [DataItemGateway, DataItemService, FunctionsService],
-    imports: [TypeOrmModule.forFeature([DataItem]), FunctionsModule],
+    imports: [TypeOrmModule.forFeature([DataItem]), forwardRef(() => FunctionsModule)],
     exports: [TypeOrmModule]
 })
 

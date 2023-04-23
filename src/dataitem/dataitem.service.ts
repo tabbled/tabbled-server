@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { DataItem, Revision } from "./entities/dataitem.entity";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository, MoreThan, QueryRunner } from "typeorm";
 import { DataItemDto } from "./dto/dataitem.dto";
 import { ConfigItem } from "../config/entities/config.entity";
 import { FunctionsService } from "../functions/functions.service";
+import { Context } from "../entities/context";
 
 interface ItemChangeInterface {
     old: DataItemDto | undefined,
@@ -13,18 +14,31 @@ interface ItemChangeInterface {
 
 @Injectable()
 export class DataItemService {
-    constructor(private readonly functionsService: FunctionsService,
+    constructor(@Inject(forwardRef(() => FunctionsService))
+                private readonly functionsService: FunctionsService,
                 @InjectRepository(DataItem)
                 private dataItemsRepository: Repository<DataItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource) {
     }
 
-    async getMany(accountId: number, filter?: any): Promise<any> {
+    async getMany(context: Context, alias?: string, filter?: any): Promise<any> {
         console.log(filter)
         return await this.dataItemsRepository.findBy({
-            accountId: accountId
+            accountId: context.accountId,
+            alias: alias
         })
+    }
+
+    async getById(id: string, context: Context): Promise<any> {
+        let item = await this.dataItemsRepository.findOneBy({
+            accountId: context.accountId,
+            id: id
+        })
+
+        console.log('getById', id, context, item)
+
+        return item
     }
 
     async getManyAfterRevision(accountId: number, rev: number): Promise<any> {
@@ -36,16 +50,19 @@ export class DataItemService {
         })
     }
 
-    async update(item: DataItemDto, accountId: number, userId: number) {
+    async update(item: DataItemDto, context: Context, silentMode: boolean = false) {
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
+        console.log('update', item, context)
+
         try {
-            let change = await this.updateItem(queryRunner, item, accountId, userId)
+            let change = await this.updateItem(queryRunner, item, context)
             await queryRunner.commitTransaction();
             await queryRunner.release();
 
-            this.invokeEvents(change)
+            if (!silentMode)
+                this.invokeEvents(change, context)
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
@@ -54,7 +71,7 @@ export class DataItemService {
         }
     }
 
-    async updateItem(queryRunner: QueryRunner, item: DataItemDto, accountId: number, userId: number): Promise<ItemChangeInterface> {
+    async updateItem(queryRunner: QueryRunner, item: DataItemDto, context: Context): Promise<ItemChangeInterface> {
         const current_item = await queryRunner.manager.findOne(DataItem, {
             where: {
                 id: item.id
@@ -71,9 +88,9 @@ export class DataItemService {
             let revRes = await queryRunner.manager.insert(Revision, {
                 alias: item.alias,
                 version: item.version,
-                accountId: accountId,
+                accountId: context.accountId,
                 data: item.data,
-                createdBy: userId
+                createdBy: context.userId
             })
             newRevision = revRes.identifiers[0].id;
         } catch (e) {
@@ -93,7 +110,7 @@ export class DataItemService {
                         rev: newRevision,
                         version: item.version,
                         alias: item.alias,
-                        accountId: accountId,
+                        accountId: context.accountId,
                         data: item.data,
                         updatedBy: item.updatedBy,
                         deletedBy: item.deletedBy,
@@ -111,7 +128,7 @@ export class DataItemService {
                         rev: newRevision,
                         version: item.version,
                         alias: item.alias,
-                        accountId: accountId,
+                        accountId: context.accountId,
                         data: item.data,
                         updatedBy: item.updatedBy,
                         deletedBy: item.deletedBy,
@@ -131,13 +148,13 @@ export class DataItemService {
             return change
     }
 
-    async updateBatch(queryRunner: QueryRunner, items: DataItemDto[], accountId: number, userId: number) {
+    async updateBatch(queryRunner: QueryRunner, items: DataItemDto[], context: Context) {
         for(let i in items) {
-            await this.updateItem(queryRunner, items[i], accountId, userId)
+            await this.updateItem(queryRunner, items[i], context)
         }
     }
 
-    async import(data: any, accountId:number, userId: number) {
+    async import(data: any, context: Context) {
         let dataSources = await this.getInternalDataSources()
 
         let queryRunner = this.datasource.createQueryRunner()
@@ -148,7 +165,7 @@ export class DataItemService {
                 const alias = dataSources[i].alias
 
                 if (data[alias] && data[alias] instanceof Array) {
-                    await this.updateBatch(queryRunner, data[alias], accountId, userId)
+                    await this.updateBatch(queryRunner, data[alias], context)
                 }
             }
             await queryRunner.commitTransaction();
@@ -168,7 +185,7 @@ export class DataItemService {
             .getRawMany()
     }
 
-    async getDataSource(alias: string) {
+    async getDataSourceConfig(alias: string) {
         const rep = this.datasource.getRepository(ConfigItem);
         let item = await rep.createQueryBuilder()
             .where(`alias = 'datasource' AND (data ->> 'alias')::varchar = :alias and deleted_at IS NULL`, { alias: alias })
@@ -176,11 +193,11 @@ export class DataItemService {
         return item.data
     }
 
-    async invokeEvents(change: ItemChangeInterface) {
+    async invokeEvents(change: ItemChangeInterface, context: Context) {
         console.log(change)
         let alias = change.new?.alias || change.old?.alias
 
-        let ds = await this.getDataSource(alias)
+        let ds = await this.getDataSourceConfig(alias)
         if (!ds || !ds.eventHandlers || !ds.eventHandlers.length)
             return
 
@@ -196,10 +213,9 @@ export class DataItemService {
             if (event_handler.event === event && event_handler.handler.type === 'function') {
 
                 let func = await this.functionsService.getById(event_handler.handler.functionId)
-                //console.log('func', func)
-                await this.functionsService.call(func.alias, {
-                    context: change
-                })
+
+                let ctx = Object.assign(context, change)
+                await this.functionsService.call(func.alias, ctx)
             }
         }
     }

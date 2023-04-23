@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export class DataItemDto {
     @ApiProperty()
-    id: number
+    id: string
 
     @ApiProperty()
     rev: number

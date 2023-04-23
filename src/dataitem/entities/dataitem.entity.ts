@@ -7,7 +7,7 @@ import {
 @Entity({name: "data_items"})
 export class DataItem {
     @PrimaryColumn({ type: "bigint"})
-    id: number;
+    id: string;
 
     @Column({ type: "bigint", name: 'rev'})
     rev: number;

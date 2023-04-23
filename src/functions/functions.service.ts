@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
 import { NodeVM } from "vm2";
 import { Axios } from 'axios'
 import { FlakeId } from '../flake-id'
+import { DataItemService } from "../dataitem/dataitem.service";
+import { DataSource as DataSourceHelper } from "../entities/datasource";
+import { Context } from "../entities/context";
 
 @Injectable()
 export class FunctionsService {
-    constructor(@InjectRepository(ConfigItem)
+    constructor(@Inject(forwardRef(() => DataItemService))
+                private dataItemService: DataItemService,
+                @InjectRepository(ConfigItem)
                 private configRepository: Repository<ConfigItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource) {
@@ -27,7 +32,7 @@ export class FunctionsService {
         return item ? item.data : undefined
     }
 
-    async call(alias: string, context: any | undefined) {
+    async call(alias: string, context: Context) {
         console.log('functions/call - ', alias, 'context - ', context)
         let func = await this.getByAlias(alias)
 
@@ -37,7 +42,7 @@ export class FunctionsService {
         let ctx = context
         if (!ctx)
             ctx = (func.data.context instanceof String) ? JSON.parse(func.data.context) : func.data.context
-        const dsHelper = new DataSourceScriptHelper()
+        const dsHelper = new DataSourcesScriptHelper(this.dataItemService, context)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
 
@@ -64,10 +69,22 @@ export class FunctionsService {
     }
 }
 
-class DataSourceScriptHelper {
-    getByAlias(alias: string) {
-        console.log(alias)
-        return undefined
+class DataSourcesScriptHelper {
+    constructor(dataItemService: DataItemService, context: Context) {
+        this.dataItemService = dataItemService
+        this.context = context
+        console.log('DataSourcesScriptHelper context', this.context)
+    }
+    readonly dataItemService: DataItemService
+    readonly context: Context
+
+    async getByAlias(alias: string) {
+        let config = await this.dataItemService.getDataSourceConfig(alias)
+
+        if (!config)
+            return undefined
+
+        return new DataSourceHelper(config, this.dataItemService, this.context)
     }
 }
 

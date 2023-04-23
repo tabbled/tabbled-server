@@ -31,7 +31,10 @@ export class DataItemGateway {
         console.log('DataItems.sync, ', 'msg =', msg.data)
         try {
             for (let i in msg.data) {
-                await this.dataItemService.update(msg.data[i], client['accountId'], client['userId'])
+                await this.dataItemService.update(msg.data[i], {
+                    accountId: client['accountId'],
+                    userId: client['userId']
+                })
             }
 
             if (msg.data.length > 0)
@@ -66,7 +69,10 @@ export class DataItemGateway {
     async import(@MessageBody() data: any, @ConnectedSocket() client: Socket) : Promise<any> {
         console.log('data/import')
         try {
-            await this.dataItemService.import(data, client['accountId'], client['userId'])
+            await this.dataItemService.import(data, {
+                accountId: client['accountId'],
+                userId: client['userId']
+            })
             this.server.emit(`data/changed`, {})
 
             return {
