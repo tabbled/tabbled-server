@@ -59,6 +59,7 @@ export class DataItemGateway {
 
         console.log('data/getChanges', msg, 'length data: ', data.length)
 
+        console.log('data/getChanges server', this.server)
         return {
             success: true,
             data: data

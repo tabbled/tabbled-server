@@ -32,12 +32,12 @@ export class FunctionsService {
         return item ? item.data : undefined
     }
 
-    async call(alias: string, context: Context) {
-        console.log('functions/call - ', alias, 'context - ', context)
+    async call(alias: string, context: Context, vmConsole?: (...args) => void) {
+        console.log('functions/call - ', alias, 'context - ', context, 'console - ', !!vmConsole)
         let func = await this.getByAlias(alias)
 
 
-        console.log('func', func)
+
 
         let ctx = context
         if (!ctx)
@@ -46,10 +46,12 @@ export class FunctionsService {
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
 
+
         const vm = new NodeVM({
             timeout: 5000,
             allowAsync: true,
             wrapper: 'none',
+            console: !!vmConsole ? 'redirect' : 'inherit',
             sandbox: {
                 ctx: ctx,
                 dataSources: dsHelper,
@@ -57,6 +59,9 @@ export class FunctionsService {
                 utilities: utils
             }
         });
+
+        if (!!vmConsole)
+            vm.on('console.log', vmConsole)
 
         let res = null
         try {
