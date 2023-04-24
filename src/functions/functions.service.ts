@@ -8,6 +8,7 @@ import { FlakeId } from '../flake-id'
 import { DataItemService } from "../dataitem/dataitem.service";
 import { DataSource as DataSourceHelper } from "../entities/datasource";
 import { Context } from "../entities/context";
+import * as process from "process";
 
 @Injectable()
 export class FunctionsService {
@@ -33,11 +34,10 @@ export class FunctionsService {
     }
 
     async call(alias: string, context: Context, vmConsole?: (...args) => void) {
+
+
         console.log('functions/call - ', alias, 'context - ', context, 'console - ', !!vmConsole)
         let func = await this.getByAlias(alias)
-
-
-
 
         let ctx = context
         if (!ctx)
@@ -63,15 +63,32 @@ export class FunctionsService {
         if (!!vmConsole)
             vm.on('console.log', vmConsole)
 
+        process.on('uncaughtException', uncaughtException);
+
         let res = null
         try {
-            res = vm.run(func.data.script)
+            res = await vm.run(func.data.script)
+            console.log("end")
         } catch (e) {
             console.error(`Call function "${func.data.alias}" error: `, e)
             throw `Call function "${func.data.alias}" error: ${e.toString()}`
+        } finally {
+            process.off('uncaughtException', uncaughtException)
         }
+
+
+        function uncaughtException(err) {
+            console.error('Asynchronous error caught.', err.toString());
+            if (!!vmConsole) {
+                vmConsole(err.toString())
+            }
+        }
+
         return (res instanceof Promise) ? await res : res
     }
+
+
+
 }
 
 class DataSourcesScriptHelper {

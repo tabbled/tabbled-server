@@ -17,14 +17,20 @@ export class FunctionsGateway {
     @SubscribeMessage('functions/call')
     async call(@MessageBody() body: CallWsFunctionDto, @ConnectedSocket() client: Socket) : Promise<any> {
 
-        console.log('functions/call', this.server)
+        console.log('functions/call', body)
         let vmConsole = this.vmConsole.bind(this)
 
-        let res = await this.functionsService.call(body.alias, body.context, vmConsole);
-
-        return {
-            success: true,
-            result: res
+        try {
+            let res = await this.functionsService.call(body.alias, body.context, vmConsole);
+            return {
+                success: true,
+                result: res
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error_message: e.toString()
+            }
         }
     }
 
