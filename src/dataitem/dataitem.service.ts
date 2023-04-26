@@ -22,12 +22,35 @@ export class DataItemService {
                 private datasource: DataSource) {
     }
 
-    async getMany(context: Context, alias?: string, filter?: any): Promise<any> {
-        console.log(filter)
-        return await this.dataItemsRepository.findBy({
-            accountId: context.accountId,
-            alias: alias
-        })
+    async getMany(context: Context, alias?: string, filter?: FilterItemInterface[], take?: number, skip?: number, sort?: any): Promise<any> {
+
+        const rep = this.datasource.getRepository(DataItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(`account_id = ${context.accountId}`)
+
+        if (take) query.take(take)
+        if (skip) query.skip(skip)
+        if (alias) query.andWhere(`alias = '${alias}'`)
+        if (sort) query.addOrderBy(sort)
+
+
+        for(let i in filter) {
+            let f = filter[i]
+            switch (f.op) {
+                case "==": query.andWhere(`data ->> '${f.key}' = '${f.compare}'`); break;
+                case "!=": query.andWhere(`data ->> '${f.key}' <> '${f.compare}'`); break;
+                case "like": query.andWhere(`data ->> '${f.key}' LIKE '%${f.compare}%'`); break;
+                case "!like": query.andWhere(`data ->> '${f.key}' NOT LIKE '%${f.compare}%'`); break;
+                case "<":
+                case "<=":
+                case ">":
+                case ">=": query.andWhere(`data ->> '${f.key}' ${f.op} '${f.compare}'`); break;
+            }
+        }
+
+        console.log('getMany.query', query.getQuery())
+        return await query.getMany()
     }
 
     async getById(id: string, context: Context): Promise<any> {
@@ -220,4 +243,11 @@ export class DataItemService {
         }
     }
 
+}
+
+export declare type StandardQueryOperator = '<' | '<=' | '==' | '!=' | '>' | '>=' | 'exists' | '!exists' | 'between' | '!between' | 'like' | '!like' | 'matches' | '!matches' | 'in' | '!in' | 'has' | '!has' | 'contains' | '!contains';
+export interface FilterItemInterface {
+    key: string,
+    op: StandardQueryOperator,
+    compare?: any
 }

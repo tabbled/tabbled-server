@@ -1,4 +1,4 @@
-import { DataItemService } from "../dataitem/dataitem.service";
+import { DataItemService, FilterItemInterface } from "../dataitem/dataitem.service";
 import { Context } from "./context";
 import { DataItemDto } from "../dataitem/dto/dataitem.dto";
 
@@ -17,13 +17,6 @@ export enum DataSourceSource {
 
 export interface EntityInterface {
     [name: string]: any | never
-}
-
-export declare type StandardQueryOperator = '<' | '<=' | '==' | '!=' | '>' | '>=' | 'exists' | '!exists' | 'between' | '!between' | 'like' | '!like' | 'matches' | '!matches' | 'in' | '!in' | 'has' | '!has' | 'contains' | '!contains';
-export interface FilterItemInterface {
-    key: string,
-    op: StandardQueryOperator,
-    compare?: any
 }
 
 export interface DataSourceConfigInterface {
@@ -55,14 +48,20 @@ export class DataSource {
         return await this.dataItemService.getMany(this.context, this.config.alias)
     }
 
-    // async getMany(filter: FilterItemInterface[], take?: number, skip?: number): Promise<any[]> {
-    //     return []
-    // }
-    //
-    // async getManyRaw(filter: FilterItemInterface[], take?: number, skip?: number): Promise<any[]> {
-    //     return []
-    // }
-    //
+    async getMany(filter: FilterItemInterface[], take?: number, skip?: number, sort?: any): Promise<any[]> {
+        console.log("getMany", JSON.stringify(filter), '<<<')
+
+        let data = await this.getManyRaw(filter, take, skip, sort);
+
+        console.log(data)
+
+        return data.map(d => d.data)
+    }
+
+    async getManyRaw(filter: FilterItemInterface[], take?: number, skip?: number, sort?: any): Promise<any[]> {
+        return await this.dataItemService.getMany(this.context, this.config.alias, filter, take, skip, sort)
+    }
+
     async getByIdRaw(id: string) : Promise<DataItemDto | undefined> {
         return await this.dataItemService.getById(id, this.context)
     }
