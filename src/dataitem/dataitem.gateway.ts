@@ -73,6 +73,7 @@ export class DataItemGateway {
                 accountId: client['accountId'],
                 userId: client['userId']
             })
+            console.log('data/import finished')
             this.server.emit(`data/changed`, {})
 
             return {
