@@ -68,16 +68,47 @@ export class DataSource {
     }
 
     async getById(id: string) : Promise<any | undefined> {
+        console.log('getById', id)
         let item = await this.getByIdRaw(id)
         return item ? item.data : undefined
     }
 
-    async insert(id: string, value: any, parentId?: string): Promise<any> {
-        console.log(id, value, parentId)
+    async insert(id: string, value: any, parentId?: string, silentMode = false): Promise<any> {
+        console.log('DataSource.updateById', id, value)
+
+        let item = {
+            id: id,
+            accountId: this.context.accountId,
+            createdAt: new Date(),
+            createdBy: this.context.userId,
+            updatedAt: new Date(),
+            updatedBy: this.context.userId,
+            version: 1,
+            alias: this.config.alias,
+            data:  value,
+            rev: 0
+        }
+
+        try {
+            await this.dataItemService.update(item, this.context, silentMode)
+        } catch (e) {
+            throw e
+        }
     }
 
-    async updateById(id: string, value: object): Promise<void> {
-        console.log(id, value)
+    async updateById(id: string, value: object, silentMode = false): Promise<void> {
+        console.log('DataSource.updateById', id, value)
+        let item = await this.getByIdRaw(id)
+        if (!item)
+            return;
+
+        item.data = value
+
+        try {
+            await this.dataItemService.update(item, this.context, silentMode)
+        } catch (e) {
+            throw e
+        }
     }
 
     async removeById(id: string): Promise<boolean> {

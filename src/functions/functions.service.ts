@@ -86,9 +86,6 @@ export class FunctionsService {
 
         return (res instanceof Promise) ? await res : res
     }
-
-
-
 }
 
 class DataSourcesScriptHelper {
