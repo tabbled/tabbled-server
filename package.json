@@ -35,7 +35,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.0.3",
     "formidable": "^2.1.1",
-    "minio": "^7.0.32",
+    "minio": "^7.0.33",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
     "pg": "^8.8.0",
