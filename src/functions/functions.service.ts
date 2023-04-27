@@ -39,9 +39,9 @@ export class FunctionsService {
         console.log('functions/call - ', alias, 'context - ', context, 'console - ', !!vmConsole)
         let func = await this.getByAlias(alias)
 
-        let ctx = context
-        if (!ctx)
-            ctx = (func.data.context instanceof String) ? JSON.parse(func.data.context) : func.data.context
+        let ctx = (func.data.context instanceof String) ? JSON.parse(func.data.context) : func.data.context
+        ctx = Object.assign(ctx, context)
+
         const dsHelper = new DataSourcesScriptHelper(this.dataItemService, context)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
