@@ -40,7 +40,7 @@ export class FunctionsService {
         let func = await this.getByAlias(alias)
         let ctx = Object.assign(JSON.parse(func.data.context), context)
 
-        const dsHelper = new DataSourcesScriptHelper(this.dataItemService, context)
+        const dsHelper = new DataSourcesScriptHelper(this.dataItemService, ctx)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
 
