@@ -65,7 +65,9 @@ export class DataItemService {
     }
 
     async getManyAfterRevision(accountId: number, rev: number): Promise<any> {
+
         console.log('getManyAfterRevision, rev', rev, 'account', accountId)
+
         const rep = this.datasource.getRepository(DataItem);
         return await rep.findBy({
             accountId: accountId,

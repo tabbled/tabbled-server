@@ -1,6 +1,6 @@
 import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, WebSocketServer } from "@nestjs/websockets";
 import { DataItemService } from './dataitem.service';
-import { DataItemResponseDto } from "./dto/response.dto";
+import { DataItemChangesResponseDto, DataItemResponseDto } from "./dto/response.dto";
 import { DataItemRequestChangesDto, DataItemRequestDto, DataItemRequestSyncDto } from "./dto/request.dto";
 import { Server, Socket } from "socket.io";
 import { UseGuards } from "@nestjs/common";
@@ -53,16 +53,47 @@ export class DataItemGateway {
     }
 
     @SubscribeMessage('data/getChanges')
-    async getChanges(@MessageBody() msg: DataItemRequestChangesDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
+    async getChanges(@MessageBody() msg: DataItemRequestChangesDto, @ConnectedSocket() client: Socket) : Promise<DataItemChangesResponseDto> {
 
-        let data = await this.dataItemService.getManyAfterRevision(client['accountId'], Number(msg.lastRevision))
 
-        console.log('data/getChanges', msg, 'length data: ', data.length)
 
-        return {
-            success: true,
-            data: data
+        try {
+            let data = await this.dataItemService.getManyAfterRevision(client['accountId'], Number(msg.lastRevision))
+
+            console.log('data/getChanges', msg, 'length data: ', data.length)
+
+            let items = {}
+            let lastRev = BigInt(msg.lastRevision)
+
+            for(let i in data) {
+                const item = data[i]
+                if (!items[item.alias]) {
+                    items[item.alias] = []
+                }
+                items[item.alias].push(item)
+
+                if (BigInt(item.rev) > lastRev ) {
+                    lastRev = BigInt(item.rev)
+                }
+            }
+
+            return {
+                success: true,
+                data: {
+                    items: items,
+                    lastRev: lastRev.toString(),
+                    length: data.length
+                },
+
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
         }
+
     }
 
     @SubscribeMessage('data/import')
