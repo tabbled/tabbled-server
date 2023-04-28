@@ -53,11 +53,38 @@ export class ConfigGateway {
 
         console.log('config/getChanges', msg)
 
-        let data = await this.configService.getManyAfterRevision(Number(msg.lastRevision))
+        try {
+            let data = await this.configService.getManyAfterRevision(Number(msg.lastRevision))
 
-        return {
-            success: true,
-            data: data
+            let items = {}
+            let lastRev = BigInt(msg.lastRevision)
+
+            for(let i in data) {
+                const item = data[i]
+                if (!items[item.alias]) {
+                    items[item.alias] = []
+                }
+                items[item.alias].push(item)
+
+                if (BigInt(item.rev) > lastRev ) {
+                    lastRev = BigInt(item.rev)
+                }
+            }
+
+            return {
+                success: true,
+                data: {
+                    items: items,
+                    lastRev: lastRev.toString(),
+                    length: data.length
+                }
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
         }
     }
 
