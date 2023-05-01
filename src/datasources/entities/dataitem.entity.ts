@@ -10,7 +10,10 @@ export class DataItem {
     id: string;
 
     @Column({ type: "bigint", name: 'rev'})
-    rev: number;
+    rev: string;
+
+    @Column({ type: "bigint", name: "parent_id" })
+    parentId?: string;
 
     @Column({ type: "bigint", name: 'version'})
     version: number;
@@ -51,8 +54,11 @@ export class Revision {
     @Column({ type: "int", name: "version"})
     version: number
 
-    @Column({ type: "int", name: "item_id"})
-    itemId: BigInteger
+    @Column({ type: "bigint", name: "item_id"})
+    itemId: string
+
+    @Column({ type: "bigint", name: "item_parent_id"})
+    itemParentId?: string
 
     @Column( {type: "int"} )
     alias: string;

@@ -9,11 +9,12 @@ import { AccountUsers, User } from "./users/entities/user.entity";
 import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
 import { DataItemModule } from './dataitem/dataitem.module';
-import { DataItem, Revision } from "./dataitem/entities/dataitem.entity";
+import { DataItem, Revision } from "./datasources/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module';
 import { ConfigItem, ConfigRevision } from "./config/entities/config.entity";
 import { FunctionsModule } from './functions/functions.module';
 import { PicturesModule } from './pictures/pictures.module';
+import { DataSourcesModule } from "./datasources/datasources.module";
 
 @Module({
     imports: [
@@ -44,7 +45,8 @@ import { PicturesModule } from './pictures/pictures.module';
         DataItemModule,
         ConfigItemModule,
         FunctionsModule,
-        PicturesModule
+        PicturesModule,
+        DataSourcesModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],

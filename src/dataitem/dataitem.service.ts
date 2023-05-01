@@ -1,11 +1,11 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { DataItem, Revision } from "./entities/dataitem.entity";
+import { Injectable } from "@nestjs/common";
+import { DataItem, Revision } from "../datasources/entities/dataitem.entity";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository, MoreThan, QueryRunner } from "typeorm";
+import { DataSource, Repository, QueryRunner } from "typeorm";
 import { DataItemDto } from "./dto/dataitem.dto";
 import { ConfigItem } from "../config/entities/config.entity";
-import { FunctionsService } from "../functions/functions.service";
 import { Context } from "../entities/context";
+
 
 interface ItemChangeInterface {
     old: DataItemDto | undefined,
@@ -14,54 +14,11 @@ interface ItemChangeInterface {
 
 @Injectable()
 export class DataItemService {
-    constructor(@Inject(forwardRef(() => FunctionsService))
-                private readonly functionsService: FunctionsService,
+    constructor(
                 @InjectRepository(DataItem)
                 private dataItemsRepository: Repository<DataItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource) {
-    }
-
-    async getMany(context: Context, alias?: string, filter?: FilterItemInterface[], take?: number, skip?: number, sort?: any): Promise<any> {
-
-        const rep = this.datasource.getRepository(DataItem);
-        let query = rep.createQueryBuilder()
-            .select()
-            .where(`account_id = ${context.accountId}`)
-
-        if (take) query.take(take)
-        if (skip) query.skip(skip)
-        if (alias) query.andWhere(`alias = '${alias}'`)
-        if (sort) query.addOrderBy(sort)
-
-
-        for(let i in filter) {
-            let f = filter[i]
-            switch (f.op) {
-                case "==": query.andWhere(`data ->> '${f.key}' = '${f.compare}'`); break;
-                case "!=": query.andWhere(`data ->> '${f.key}' <> '${f.compare}'`); break;
-                case "like": query.andWhere(`data ->> '${f.key}' LIKE '%${f.compare}%'`); break;
-                case "!like": query.andWhere(`data ->> '${f.key}' NOT LIKE '%${f.compare}%'`); break;
-                case "<":
-                case "<=":
-                case ">":
-                case ">=": query.andWhere(`data ->> '${f.key}' ${f.op} '${f.compare}'`); break;
-            }
-        }
-
-        console.log('getMany.query', query.getQuery())
-        return await query.getMany()
-    }
-
-    async getById(id: string, context: Context): Promise<any> {
-        let item = await this.dataItemsRepository.findOneBy({
-            accountId: context.accountId,
-            id: id
-        })
-
-        console.log('getById', id, context, item)
-
-        return item
     }
 
     async getManyAfterRevision(accountId: number, rev: number): Promise<any> {
@@ -69,25 +26,29 @@ export class DataItemService {
         console.log('getManyAfterRevision, rev', rev, 'account', accountId)
 
         const rep = this.datasource.getRepository(DataItem);
-        return await rep.findBy({
-            accountId: accountId,
-            rev: MoreThan(rev)
-        })
+        return await rep.createQueryBuilder()
+            .select()
+            .where(`account_id = :accountId AND rev > :rev`, {
+                accountId: accountId,
+                rev: rev
+            })
+            .getMany()
     }
 
     async update(item: DataItemDto, context: Context, silentMode: boolean = false) {
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        console.log('update', item, context)
+        console.log('update', item, context, silentMode)
 
         try {
-            let change = await this.updateItem(queryRunner, item, context)
+            //let change = await this.updateItem(queryRunner, item, context)
+            await this.updateItem(queryRunner, item, context)
             await queryRunner.commitTransaction();
             await queryRunner.release();
 
-            if (!silentMode)
-                this.invokeEvents(change, context)
+            // if (!silentMode)
+            //     this.invokeEvents(change, context)
         } catch (e) {
             console.error(e)
             await queryRunner.rollbackTransaction();
@@ -218,38 +179,32 @@ export class DataItemService {
         return item.data
     }
 
-    async invokeEvents(change: ItemChangeInterface, context: Context) {
-        console.log(change)
-        let alias = change.new?.alias || change.old?.alias
-
-        let ds = await this.getDataSourceConfig(alias)
-        if (!ds || !ds.eventHandlers || !ds.eventHandlers.length)
-            return
-
-        let event = ''
-        if (change.new && !change.old) event = 'onAdd'
-        else if (change.new && change.old) event = 'onUpdate'
-        else if (!change.new && change.old) event = 'onRemove'
-        else return
-
-        for(const i in ds.eventHandlers) {
-            let event_handler = ds.eventHandlers[i]
-            console.log(`Event handler for dataSource "${ds.alias}"- `, ds.eventHandlers)
-            if (event_handler.event === event && event_handler.handler.type === 'function') {
-
-                let func = await this.functionsService.getById(event_handler.handler.functionId)
-
-                let ctx = Object.assign(context, change)
-                await this.functionsService.call(func.alias, ctx)
-            }
-        }
-    }
+    // async invokeEvents(change: ItemChangeInterface, context: Context) {
+    //     console.log(change)
+    //     let alias = change.new?.alias || change.old?.alias
+    //
+    //     let ds = await this.getDataSourceConfig(alias)
+    //     if (!ds || !ds.eventHandlers || !ds.eventHandlers.length)
+    //         return
+    //
+    //     let event = ''
+    //     if (change.new && !change.old) event = 'onAdd'
+    //     else if (change.new && change.old) event = 'onUpdate'
+    //     else if (!change.new && change.old) event = 'onRemove'
+    //     else return
+    //
+    //     for(const i in ds.eventHandlers) {
+    //         let event_handler = ds.eventHandlers[i]
+    //         console.log(`Event handler for dataSource "${ds.alias}"- `, ds.eventHandlers)
+    //         if (event_handler.event === event && event_handler.handler.type === 'function') {
+    //
+    //             let func = await this.functionsService.getById(event_handler.handler.functionId)
+    //
+    //             let ctx = Object.assign(context, change)
+    //             await this.functionsService.call(func.alias, ctx)
+    //         }
+    //     }
+    // }
 
 }
 
-export declare type StandardQueryOperator = '<' | '<=' | '==' | '!=' | '>' | '>=' | 'exists' | '!exists' | 'between' | '!between' | 'like' | '!like' | 'matches' | '!matches' | 'in' | '!in' | 'has' | '!has' | 'contains' | '!contains';
-export interface FilterItemInterface {
-    key: string,
-    op: StandardQueryOperator,
-    compare?: any
-}

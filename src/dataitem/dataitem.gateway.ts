@@ -1,7 +1,7 @@
 import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, WebSocketServer } from "@nestjs/websockets";
 import { DataItemService } from './dataitem.service';
 import { DataItemChangesResponseDto, DataItemResponseDto } from "./dto/response.dto";
-import { DataItemRequestChangesDto, DataItemRequestDto, DataItemRequestSyncDto } from "./dto/request.dto";
+import { DataItemRequestChangesDto, DataItemRequestSyncDto } from "./dto/request.dto";
 import { Server, Socket } from "socket.io";
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -16,15 +16,15 @@ export class DataItemGateway {
     @WebSocketServer()
     server: Server;
 
-    @SubscribeMessage('data/getMany')
-    async getMany(@MessageBody() msg: DataItemRequestDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
-        let data = await this.dataItemService.getMany(client['accountId'])
-
-        return {
-            success: true,
-            data: data
-        }
-    }
+    // @SubscribeMessage('data/getMany')
+    // async getMany(@MessageBody() msg: DataItemRequestDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {
+    //     let data = await this.dataItemService.getMany(client['accountId'])
+    //
+    //     return {
+    //         success: true,
+    //         data: data
+    //     }
+    // }
 
     @SubscribeMessage('data/update')
     async syncMany(@MessageBody() msg: DataItemRequestSyncDto, @ConnectedSocket() client: Socket) : Promise<DataItemResponseDto> {

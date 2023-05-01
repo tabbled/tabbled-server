@@ -1,19 +1,18 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
 import { NodeVM } from "vm2";
 import { Axios } from 'axios'
 import { FlakeId } from '../flake-id'
-import { DataItemService } from "../dataitem/dataitem.service";
-import { DataSource as DataSourceHelper } from "../entities/datasource";
 import { Context } from "../entities/context";
 import * as process from "process";
+import { DataSourcesService } from "../datasources/datasources.service";
 
 @Injectable()
 export class FunctionsService {
-    constructor(@Inject(forwardRef(() => DataItemService))
-                private dataItemService: DataItemService,
+    constructor(@Inject(DataSourcesService)
+                private dataSourcesService: DataSourcesService,
                 @InjectRepository(ConfigItem)
                 private configRepository: Repository<ConfigItem>,
                 @InjectDataSource('default')
@@ -40,7 +39,7 @@ export class FunctionsService {
         let func = await this.getByAlias(alias)
         let ctx = Object.assign(JSON.parse(func.data.context), context)
 
-        const dsHelper = new DataSourcesScriptHelper(this.dataItemService, ctx)
+        const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, ctx)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
 
@@ -89,21 +88,16 @@ export class FunctionsService {
 }
 
 class DataSourcesScriptHelper {
-    constructor(dataItemService: DataItemService, context: Context) {
-        this.dataItemService = dataItemService
+    constructor(dataSourcesService: DataSourcesService, context: Context) {
+        this.dataSourcesService = dataSourcesService
         this.context = context
         console.log('DataSourcesScriptHelper context', this.context)
     }
-    readonly dataItemService: DataItemService
+    readonly dataSourcesService: DataSourcesService
     readonly context: Context
 
     async getByAlias(alias: string) {
-        let config = await this.dataItemService.getDataSourceConfig(alias)
-
-        if (!config)
-            return undefined
-
-        return new DataSourceHelper(config, this.dataItemService, this.context)
+        return await this.dataSourcesService.getByAlias(alias, this.context)
     }
 }
 

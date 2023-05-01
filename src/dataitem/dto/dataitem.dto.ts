@@ -5,7 +5,7 @@ export class DataItemDto {
     id: string
 
     @ApiProperty()
-    rev: number
+    rev: string
 
     @ApiProperty()
     version: number

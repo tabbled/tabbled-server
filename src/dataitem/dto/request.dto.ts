@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { DataItem } from "../entities/dataitem.entity";
+import { DataItem } from "../../datasources/entities/dataitem.entity";
 
 export class DataItemRequestDto {
     @ApiProperty()

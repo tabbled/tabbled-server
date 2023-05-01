@@ -17,8 +17,9 @@ export class PicturesController {
     constructor(private readonly picturesService: PicturesService) {}
 
     @Post('')
-    @UseInterceptors(FileInterceptor('ImageField'))
+    @UseInterceptors(FileInterceptor('file'))
     async upload(@UploadedFile() file: Express.Multer.File) {
+        console.log('/pictures upload')
 
         let filename = ""
         try {
