@@ -21,7 +21,15 @@ export class FunctionsGateway {
         let vmConsole = this.vmConsole.bind(this)
 
         try {
-            let res = await this.functionsService.call(body.alias, body.context, vmConsole);
+            let res = await this.functionsService.callByAlias(
+                body.alias,
+                Object.assign(body.context, {
+                    accountId: client['accountId'],
+                    userId: client['userId']
+                }),
+                vmConsole
+            );
+
             return {
                 success: true,
                 result: res

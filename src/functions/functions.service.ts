@@ -8,10 +8,14 @@ import { FlakeId } from '../flake-id'
 import { Context } from "../entities/context";
 import * as process from "process";
 import { DataSourcesService } from "../datasources/datasources.service";
+import { Processor, Process } from '@nestjs/bull';
+import { DoneCallback, Job } from "bull";
 
 @Injectable()
+@Processor('functions')
 export class FunctionsService {
-    constructor(@Inject(DataSourcesService)
+    constructor(
+                @Inject(DataSourcesService)
                 private dataSourcesService: DataSourcesService,
                 @InjectRepository(ConfigItem)
                 private configRepository: Repository<ConfigItem>,
@@ -20,9 +24,11 @@ export class FunctionsService {
     }
 
     async getByAlias(alias: string) {
-        return await this.configRepository.createQueryBuilder()
+        let item = await this.configRepository.createQueryBuilder()
             .where(`alias = 'function' AND data ->> 'alias' = :alias`, { alias: alias })
             .getOne()
+
+        return item ? item.data : undefined
     }
 
     async getById(id: string) {
@@ -32,12 +38,26 @@ export class FunctionsService {
         return item ? item.data : undefined
     }
 
-    async call(alias: string, context: Context, vmConsole?: (...args) => void) {
-
-
-        console.log('functions/call - ', alias, 'context - ', context, 'console - ', !!vmConsole)
+    async callByAlias(alias: string, context: Context, vmConsole?: (...args) => void) {
         let func = await this.getByAlias(alias)
-        let ctx = Object.assign(JSON.parse(func.data.context), context)
+        if (!func)
+            throw new Error('Function not found')
+
+        return await this.call(func, context, vmConsole)
+    }
+
+    async callById(id:string, context: Context, vmConsole?: (...args) => void) {
+        let func = await this.getById(id)
+        if (!func)
+            throw new Error('Function not found')
+
+        return await this.call(func, context, vmConsole)
+    }
+
+    async call(func: FunctionConfig, context: Context, vmConsole?: (...args) => void) {
+
+        console.log('functions/call - ', func.alias, 'context - ', context, 'console - ', !!vmConsole)
+        let ctx = Object.assign(JSON.parse(func.context), context)
 
         const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, ctx)
         const requestHelper = new RequestScriptHelper()
@@ -66,11 +86,11 @@ export class FunctionsService {
 
         let res = null
         try {
-            res = await vm.run(func.data.script)
+            res = await vm.run(func.script)
             console.log("end")
         } catch (e) {
-            console.error(`Call function "${func.data.alias}" error: `, e)
-            throw `Call function "${func.data.alias}" error: ${e.toString()}`
+            console.error(`Call function "${func.alias}" error: `, e)
+            throw `Call function "${func.alias}" error: ${e.toString()}`
         } finally {
             process.off('uncaughtException', uncaughtException)
         }
@@ -85,6 +105,25 @@ export class FunctionsService {
 
         return (res instanceof Promise) ? await res : res
     }
+
+    @Process('call')
+    async callProcessor(job: Job, cb: DoneCallback) {
+        console.log('function-call by id:', job.data.functionId)
+
+        try {
+            let res = await this.callById(job.data.functionId, job.data.context)
+            cb(null,res)
+        } catch (e) {
+            cb(e)
+        }
+    }
+}
+
+export class FunctionConfig {
+    id: string
+    alias: string
+    context: string
+    script: string
 }
 
 class DataSourcesScriptHelper {

@@ -3,6 +3,7 @@ import { GetDataManyOptionsDto } from "../dto/datasource.dto";
 import { DataSource, QueryRunner } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
+import { Queue } from "bull";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -18,6 +19,19 @@ export enum DataSourceSource {
     field = 'field'
 }
 
+export type HandlerType = 'script' | 'function'
+export type DataSourceEvent = 'onAdd' | 'onUpdate' | 'onRemove'
+
+export interface EventHandlerInterface {
+    event: DataSourceEvent,
+    handler: HandlerInterface
+}
+export interface HandlerInterface {
+    type: HandlerType,
+    script?: string,
+    functionId?: string | null
+}
+
 export interface DataSourceConfigInterface {
     fields: any[],
     type: DataSourceType,
@@ -27,18 +41,21 @@ export interface DataSourceConfigInterface {
     keyField?: string,
     isTree?: boolean,
     source?: DataSourceSource,
-    script?: string
+    script?: string,
+    eventHandlers: EventHandlerInterface[]
 }
 
 export class InternalDataSource {
-    constructor(config: DataSourceConfigInterface, dataSource: DataSource, context: Context) {
+    constructor(config: DataSourceConfigInterface, dataSource: DataSource, functionsQueue: Queue, context: Context) {
         this.config = config
         this.dataSource = dataSource
         this.context = context
+        this.functionsQueue = functionsQueue
     }
     readonly config: DataSourceConfigInterface
     readonly dataSource: DataSource
     readonly context: Context
+    readonly functionsQueue: Queue
 
     /**
      * @deprecated
@@ -100,7 +117,7 @@ export class InternalDataSource {
         return item ? item.data : undefined
     }
 
-    async insert(value: any,  id?: string, parentId?: string): Promise<DataItem> {
+    async insert(value: any,  id?: string, parentId?: string, invokeEvents = true): Promise<DataItem> {
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
@@ -134,15 +151,24 @@ export class InternalDataSource {
             throw e
         }
         await queryRunner.release();
+
+
+        if (invokeEvents) {
+            await this.invokeEvents('onAdd', {
+                old: null,
+                new: item
+            });
+        }
+
         return item
     }
 
-    async updateById(id: string, value: object, silentMode = false): Promise<DataItem> {
+    async updateById(id: string, value: object, invokeEvents = true): Promise<DataItem> {
         let item = await this.getByIdRaw(id);
+        let origin = Object.assign({}, item)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
-        console.log("updateById, silentMode", silentMode)
 
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
@@ -167,10 +193,18 @@ export class InternalDataSource {
             throw e
         }
         await queryRunner.release();
+
+        if (invokeEvents) {
+            await this.invokeEvents('onUpdate', {
+                old: origin,
+                new: item
+            });
+        }
+
         return item
     }
 
-    async removeById(id: string, soft = true): Promise<DataItem> {
+    async removeById(id: string, invokeEvents = true, soft = true): Promise<DataItem> {
         console.log("Remove by id", id, "soft", soft)
         let item = await this.getByIdRaw(id);
         if (!item) {
@@ -199,6 +233,14 @@ export class InternalDataSource {
             throw e
         }
         await queryRunner.release();
+
+        if (invokeEvents) {
+            await this.invokeEvents('onRemove', {
+                old: item,
+                new: null
+            });
+        }
+
         return item
     }
 
@@ -226,6 +268,26 @@ export class InternalDataSource {
             return revRes.identifiers[0].id;
         } catch (e) {
             throw e;
+        }
+    }
+
+    async invokeEvents(event: DataSourceEvent, context: any) {
+        if (!this.config.eventHandlers)
+            return
+
+        for(const i in this.config.eventHandlers) {
+            let event_handler = this.config.eventHandlers[i]
+
+
+            if (event_handler.event === event && event_handler.handler.type === 'function') {
+
+                console.log(`Event handler "${event}" for dataSource "${this.config.alias}"`)
+
+                await this.functionsQueue.add('call', {
+                    functionId: event_handler.handler.functionId,
+                    context: Object.assign(this.context, context)
+                })
+            }
         }
     }
 }

@@ -6,12 +6,6 @@ import { DataItemDto } from "./dto/dataitem.dto";
 import { ConfigItem } from "../config/entities/config.entity";
 import { Context } from "../entities/context";
 
-
-interface ItemChangeInterface {
-    old: DataItemDto | undefined,
-    new: DataItemDto | undefined
-}
-
 @Injectable()
 export class DataItemService {
     constructor(
@@ -57,17 +51,13 @@ export class DataItemService {
         }
     }
 
-    async updateItem(queryRunner: QueryRunner, item: DataItemDto, context: Context): Promise<ItemChangeInterface> {
+    async updateItem(queryRunner: QueryRunner, item: DataItemDto, context: Context): Promise<void> {
         const current_item = await queryRunner.manager.findOne(DataItem, {
             where: {
                 id: item.id
             }
         })
 
-        let change: ItemChangeInterface = {
-            old: current_item,
-            new: item
-        }
         let newRevision = null
 
         try {
@@ -127,11 +117,7 @@ export class DataItemService {
                     })
                     .execute()
 
-                if (item.deletedAt && !current_item.deletedAt) {
-                    change.new = undefined
-                }
             }
-            return change
     }
 
     async updateBatch(queryRunner: QueryRunner, items: DataItemDto[], context: Context) {
@@ -178,33 +164,6 @@ export class DataItemService {
             .getOne()
         return item.data
     }
-
-    // async invokeEvents(change: ItemChangeInterface, context: Context) {
-    //     console.log(change)
-    //     let alias = change.new?.alias || change.old?.alias
-    //
-    //     let ds = await this.getDataSourceConfig(alias)
-    //     if (!ds || !ds.eventHandlers || !ds.eventHandlers.length)
-    //         return
-    //
-    //     let event = ''
-    //     if (change.new && !change.old) event = 'onAdd'
-    //     else if (change.new && change.old) event = 'onUpdate'
-    //     else if (!change.new && change.old) event = 'onRemove'
-    //     else return
-    //
-    //     for(const i in ds.eventHandlers) {
-    //         let event_handler = ds.eventHandlers[i]
-    //         console.log(`Event handler for dataSource "${ds.alias}"- `, ds.eventHandlers)
-    //         if (event_handler.event === event && event_handler.handler.type === 'function') {
-    //
-    //             let func = await this.functionsService.getById(event_handler.handler.functionId)
-    //
-    //             let ctx = Object.assign(context, change)
-    //             await this.functionsService.call(func.alias, ctx)
-    //         }
-    //     }
-    // }
 
 }
 

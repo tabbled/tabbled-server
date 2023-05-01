@@ -5,11 +5,15 @@ import { DataSource } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
 import { DataSourceConfigInterface, InternalDataSource } from "./entities/datasource.entity";
 import { Context } from "../entities/context";
+import { Queue } from "bull";
+import { InjectQueue } from "@nestjs/bull";
 
 @Injectable()
 export class DataSourcesService {
-    constructor(@InjectDataSource('default')
-                private datasource: DataSource) {
+    constructor( @InjectQueue('functions') private functionsQueue: Queue,
+                 @InjectDataSource('default')
+                private datasource: DataSource,
+               ) {
     }
 
     async getDataMany(alias: string, options: GetDataManyOptionsDto, context: Context) : Promise<any[]> {
@@ -24,12 +28,12 @@ export class DataSourcesService {
 
     async insertData(alias: string, value: any, context: Context, id?: string, parentId?: string) {
         let ds = await this.getByAlias(alias, context)
-        return ds.insert(value, id, parentId)
+        return await ds.insert(value, id, parentId)
     }
 
     async updateDataById(alias: string, id: string, value: any, context: Context) {
         let ds = await this.getByAlias(alias, context)
-        return ds.updateById(id, value)
+        return await ds.updateById(id, value)
     }
 
     async removeDataById(alias: string, id: string,  context: Context, soft: boolean = true) {
@@ -39,7 +43,7 @@ export class DataSourcesService {
 
     async setValue(alias: string, id: string, field: string, value: any,  context: Context, silent: boolean = true) {
         let ds = await this.getByAlias(alias, context)
-        return ds.setValue(id, field, value, silent)
+        return await ds.setValue(id, field, value, silent)
     }
 
     private async getConfig(alias: string): Promise<DataSourceConfigInterface> {
@@ -57,6 +61,6 @@ export class DataSourcesService {
             throw new Error('DataSource is not an internal source')
         }
 
-        return new InternalDataSource(config, this.datasource, context)
+        return new InternalDataSource(config, this.datasource, this.functionsQueue, context)
     }
 }

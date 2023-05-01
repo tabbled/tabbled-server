@@ -15,6 +15,7 @@ import { ConfigItem, ConfigRevision } from "./config/entities/config.entity";
 import { FunctionsModule } from './functions/functions.module';
 import { PicturesModule } from './pictures/pictures.module';
 import { DataSourcesModule } from "./datasources/datasources.module";
+import { BullModule } from '@nestjs/bull';
 
 @Module({
     imports: [
@@ -40,6 +41,12 @@ import { DataSourcesModule } from "./datasources/datasources.module";
                 ConfigItem,
                 ConfigRevision
             ]
+        }),
+        BullModule.forRoot({
+            redis: {
+                host: process.env.REDIS_HOST,
+                port: Number(process.env.REDIS_PORT),
+            }
         }),
         AccountsModule,
         DataItemModule,

@@ -11,7 +11,7 @@ export class FunctionsController {
         @Body() body: any
     ) {
         try {
-            return await this.functionsService.call(alias, body);
+            return await this.functionsService.callByAlias(alias, body);
         } catch (e) {
             throw new HttpException({
                 status: HttpStatus.INTERNAL_SERVER_ERROR,
