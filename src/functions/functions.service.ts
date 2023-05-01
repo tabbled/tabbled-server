@@ -56,14 +56,12 @@ export class FunctionsService {
 
     async call(func: FunctionConfig, context: Context, vmConsole?: (...args) => void) {
 
-        console.log('functions/call - ', func.alias, 'context - ', context, 'console - ', !!vmConsole)
+        console.log('functions/call - ', func.alias)
         let ctx = Object.assign(JSON.parse(func.context), context)
 
         const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, ctx)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
-
-        console.log('ctx', ctx)
 
 
         const vm = new NodeVM({
@@ -87,7 +85,6 @@ export class FunctionsService {
         let res = null
         try {
             res = await vm.run(func.script)
-            console.log("end")
         } catch (e) {
             console.error(`Call function "${func.alias}" error: `, e)
             throw `Call function "${func.alias}" error: ${e.toString()}`
@@ -108,8 +105,6 @@ export class FunctionsService {
 
     @Process('call')
     async callProcessor(job: Job, cb: DoneCallback) {
-        console.log('function-call by id:', job.data.functionId)
-
         try {
             let res = await this.callById(job.data.functionId, job.data.context)
             cb(null,res)

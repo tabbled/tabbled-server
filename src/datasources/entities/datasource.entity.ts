@@ -164,6 +164,7 @@ export class InternalDataSource {
     }
 
     async updateById(id: string, value: object, invokeEvents = true): Promise<DataItem> {
+        console.log(`DataSource "${this.config.alias}" updateById`, id, 'invokeEvents: ', invokeEvents)
         let item = await this.getByIdRaw(id);
         let origin = Object.assign({}, item)
         if (!item) {
@@ -244,14 +245,14 @@ export class InternalDataSource {
         return item
     }
 
-    async setValue(id: string, field: string, value: any, silent = true): Promise<DataItem> {
+    async setValue(id: string, field: string, value: any, invokeEvents = true): Promise<DataItem> {
         let item = await this.getByIdRaw(id);
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
         item.data[field] = value
 
-        return await this.updateById(id, item.data, silent)
+        return await this.updateById(id, item.data, invokeEvents)
     }
 
     private async createRevision(queryRunner: QueryRunner, item: DataItem) {
@@ -272,7 +273,7 @@ export class InternalDataSource {
     }
 
     async invokeEvents(event: DataSourceEvent, context: any) {
-        if (!this.config.eventHandlers)
+        if (!this.config)
             return
 
         for(const i in this.config.eventHandlers) {

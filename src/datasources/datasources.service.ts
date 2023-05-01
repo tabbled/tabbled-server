@@ -41,9 +41,9 @@ export class DataSourcesService {
         return ds.removeById(id, soft)
     }
 
-    async setValue(alias: string, id: string, field: string, value: any,  context: Context, silent: boolean = true) {
+    async setValue(alias: string, id: string, field: string, value: any,  context: Context) {
         let ds = await this.getByAlias(alias, context)
-        return await ds.setValue(id, field, value, silent)
+        return await ds.setValue(id, field, value)
     }
 
     private async getConfig(alias: string): Promise<DataSourceConfigInterface> {
