@@ -41,8 +41,9 @@ export class PicturesController {
     ) {
         try {
             let f = await this.picturesService.getOne(name)
-            response.setHeader('Content-Type', f.stat.metaData['content-type'])
-            response.setHeader('Origin-Filename', f.stat.metaData['origin-filename'])
+            let md = f.stat.metaData || {}
+            response.setHeader('Content-Type',  md['content-type'] ? md['content-type'] : "application/png")
+            response.setHeader('Origin-Filename', md['origin-filename'] ? md['origin-filename'] : "")
             return f.file.pipe(response);
         }
         catch (e) {

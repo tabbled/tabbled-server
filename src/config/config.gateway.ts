@@ -5,7 +5,6 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Server, Socket } from "socket.io";
 import { ConfigImportDto } from "./dto/request.dto";
 import { AuthGuard } from "../auth/auth.guard";
-let p = require('./../../package.json');
 
 @UseGuards(JwtAuthGuard, AuthGuard)
 @WebSocketGateway()
@@ -105,18 +104,5 @@ export class ConfigGateway {
                 error_message: e.toString()
             }
         }
-    }
-
-    //Need to move to a separated module
-    @SubscribeMessage('app/version')
-    async appVersion() : Promise<any> {
-        console.log('app/version')
-        return {
-            success: true,
-            data: {
-                version: p.version
-            }
-        }
-
     }
 }

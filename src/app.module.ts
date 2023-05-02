@@ -16,6 +16,7 @@ import { FunctionsModule } from './functions/functions.module';
 import { PicturesModule } from './pictures/pictures.module';
 import { DataSourcesModule } from "./datasources/datasources.module";
 import { BullModule } from '@nestjs/bull';
+import { SettingsModule } from "./settings/settings.module";
 
 @Module({
     imports: [
@@ -53,7 +54,8 @@ import { BullModule } from '@nestjs/bull';
         ConfigItemModule,
         FunctionsModule,
         PicturesModule,
-        DataSourcesModule
+        DataSourcesModule,
+        SettingsModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],
