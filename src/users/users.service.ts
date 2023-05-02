@@ -26,6 +26,33 @@ export class UsersService {
         return this.usersRepository.findOneBy(where)
     }
 
+    async getSettings(userId: number) {
+        let user = await this.findOne({id: userId});
+        let settings = await this.accountSettings(userId);
+
+        let accounts = [];
+        settings.forEach(item => {
+            accounts.push({
+                id: item.acc_id,
+                name: item.acc_name,
+                permissions: item.au_permissions,
+                active: item.au_active,
+            })
+        })
+
+        let res = {
+            id: user.id,
+            username: user.username,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            settings: user.settings,
+            accounts: accounts
+        }
+        console.log(res)
+
+        return res
+    }
+
     async accountSettings(userId): Promise<any | undefined> {
         return this.usersRepository
             .createQueryBuilder('users')

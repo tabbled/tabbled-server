@@ -25,30 +25,10 @@ export class UsersGateway {
         console.log('users/me', client['userId'])
 
         try {
-
-            let user = await this.usersService.findOne({id: client['userId']});
-            let settings = await this.usersService.accountSettings(client['userId']);
-
-            let accounts = [];
-            settings.forEach(item => {
-                accounts.push({
-                    id: item.acc_id,
-                    name: item.acc_name,
-                    permissions: item.au_permissions,
-                    active: item.au_active,
-                })
-            })
-
+            let user = await this.usersService.getSettings(client['userId'])
             return {
                 success: true,
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    firstname: user.firstname,
-                    lastname: user.lastname,
-                    settings: user.settings,
-                    accounts: accounts
-                }
+                user: user
             };
         } catch (e) {
             console.error(e)

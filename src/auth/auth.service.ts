@@ -12,18 +12,18 @@ export class AuthService {
         private jwtService: JwtService,
         private userService: UsersService
     ) {}
-    
+
     async login(login: LoginDto) {
         const user: User = await this.userService.findOne({ username: login.username })
 
-      if (!user) {
-        throw Error(`User and password pair not found`)
-      }
-        
+        if (!user) {
+            throw Error(`User and password pair not found`)
+        }
+
         if (!bcrypt.compareSync(login.password, user.password)) {
             throw Error(`User and password pair not found`)
         }
-        
+
         const payload = { username: login.username, userId: user.id };
         return this.jwtService.sign(payload, {
             expiresIn: '7 days'
