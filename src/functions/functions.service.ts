@@ -106,10 +106,13 @@ export class FunctionsService {
     @Process('call')
     async callProcessor(job: Job, cb: DoneCallback) {
         try {
+            console.log('callProcessor, funcId', job.data.functionId)
             let res = await this.callById(job.data.functionId, job.data.context)
+            console.log('callProcessor, funcId', job.data.functionId)
             cb(null,res)
         } catch (e) {
             cb(e)
+            throw e
         }
     }
 }

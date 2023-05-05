@@ -8,7 +8,6 @@ import { ConfigModule } from '@nestjs/config';
 import { AccountUsers, User } from "./users/entities/user.entity";
 import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
-import { DataItemModule } from './dataitem/dataitem.module';
 import { DataItem, Revision } from "./datasources/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module';
 import { ConfigItem, ConfigRevision } from "./config/entities/config.entity";
@@ -50,7 +49,6 @@ import { SettingsModule } from "./settings/settings.module";
             }
         }),
         AccountsModule,
-        DataItemModule,
         ConfigItemModule,
         FunctionsModule,
         PicturesModule,

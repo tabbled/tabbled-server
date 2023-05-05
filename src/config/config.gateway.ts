@@ -4,9 +4,8 @@ import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Server, Socket } from "socket.io";
 import { ConfigImportDto } from "./dto/request.dto";
-import { AuthGuard } from "../auth/auth.guard";
 
-@UseGuards(JwtAuthGuard, AuthGuard)
+@UseGuards(JwtAuthGuard)
 @WebSocketGateway()
 export class ConfigGateway {
     constructor(private readonly configService: ConfigService) {}

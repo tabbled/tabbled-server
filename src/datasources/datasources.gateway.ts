@@ -8,7 +8,10 @@ import {
     UpdateDataByIdDto
 } from "./dto/datasource.dto";
 import { Socket } from "socket.io";
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
+@UseGuards(JwtAuthGuard)
 @WebSocketGateway()
 export class DataSourcesGateway {
     constructor(private readonly dataSourcesService: DataSourcesService) {}
@@ -109,6 +112,8 @@ export class DataSourcesGateway {
                     userId: client['userId']
                 }
             )
+
+            console.log('dataSources/data/updateById - updated, data', data)
 
             return {
                 success: true,

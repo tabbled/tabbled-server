@@ -76,7 +76,11 @@ export class InternalDataSource {
         const rep = this.dataSource.getRepository(DataItem);
         let query = rep.createQueryBuilder()
             .select()
-            .where(`account_id = ${this.context.accountId} AND alias = '${this.config.alias}' AND deleted_at IS NULL`)
+            .where(`alias = '${this.config.alias}' AND deleted_at IS NULL`)
+
+        if (this.context.accountId) {
+            query.andWhere(`account_id = ${this.context.accountId}`)
+        }
 
         if (options.take) query.take(options.take)
         if (options.skip) query.skip(options.skip)
@@ -272,7 +276,7 @@ export class InternalDataSource {
         }
     }
 
-    async invokeEvents(event: DataSourceEvent, context: any) {
+    invokeEvents(event: DataSourceEvent, context: any) {
         if (!this.config)
             return
 
@@ -282,12 +286,18 @@ export class InternalDataSource {
 
             if (event_handler.event === event && event_handler.handler.type === 'function') {
 
-                console.log(`Event handler "${event}" for dataSource "${this.config.alias}"`)
 
-                await this.functionsQueue.add('call', {
-                    functionId: event_handler.handler.functionId,
-                    context: Object.assign(this.context, context)
-                })
+                try {
+                    this.functionsQueue.add('call', {
+                        functionId: event_handler.handler.functionId,
+                        context: Object.assign(this.context, context)
+                    })
+                    console.log(`Event handler found "${event}" for dataSource "${this.config.alias}". Task to call func ${event_handler.handler.functionId} added`)
+                } catch (e) {
+                    console.error(e)
+                    throw e
+                }
+
             }
         }
     }

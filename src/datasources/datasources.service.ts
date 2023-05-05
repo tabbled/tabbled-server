@@ -18,12 +18,12 @@ export class DataSourcesService {
 
     async getDataMany(alias: string, options: GetDataManyOptionsDto, context: Context) : Promise<any[]> {
         let ds = await this.getByAlias(alias, context)
-        return ds.getMany(options)
+        return await ds.getMany(options)
     }
 
     async getDataById(alias: string, id: string, context: Context) : Promise<any> {
         let ds = await this.getByAlias(alias, context)
-        return ds.getById(id)
+        return await ds.getById(id)
     }
 
     async insertData(alias: string, value: any, context: Context, id?: string, parentId?: string) {

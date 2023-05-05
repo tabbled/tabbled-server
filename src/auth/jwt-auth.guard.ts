@@ -18,7 +18,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         const client = context.getArgByIndex(0);
         const auth = client['handshake']['auth'];
 
-        //console.log('canActivate', client)
         try {
             const payload = this.jwtService.verify(auth.jwt);
             // append user and poll to socket
