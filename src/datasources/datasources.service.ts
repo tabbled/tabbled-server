@@ -51,13 +51,17 @@ export class DataSourcesService {
         let item = await rep.createQueryBuilder()
             .where(`alias = 'datasource' AND (data ->> 'alias')::varchar = :alias and deleted_at IS NULL`, { alias: alias })
             .getOne()
+
+        if (!item)
+            throw new Error(`DataSource '${alias}' not found`)
+
         return item.data
     }
 
     async getByAlias(alias: string, context: Context) {
         let config = await this.getConfig(alias)
 
-        if (!config || config.source !== 'internal') {
+        if (config.source !== 'internal') {
             throw new Error('DataSource is not an internal source')
         }
 
