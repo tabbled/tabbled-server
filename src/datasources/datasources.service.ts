@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetDataManyOptionsDto } from "./dto/datasource.dto";
+import { GetDataManyOptionsDto, ImportDataOptionsDto } from "./dto/datasource.dto";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
@@ -39,6 +39,11 @@ export class DataSourcesService {
     async removeDataById(alias: string, id: string,  context: Context, soft: boolean = true) {
         let ds = await this.getByAlias(alias, context)
         return ds.removeById(id, soft)
+    }
+
+    async importData(alias: string, data: any[], options: ImportDataOptionsDto, context: Context) {
+        let ds = await this.getByAlias(alias, context)
+        return ds.import(data, options)
     }
 
     async setValue(alias: string, id: string, field: string, value: any,  context: Context) {

@@ -18,10 +18,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
         // Firstly we check the http auth from headers
         let token = this.extractTokenFromHeader(request)
+        let accountId
 
         // if token not provided then check in ws handshake auth
         if (!token) {
             token = client.handshake?.auth.jwt
+            accountId = client.handshake?.auth.accountId
+        } else {
+            accountId = request.headers['x-account-id']
         }
 
         if (!token) {
@@ -33,7 +37,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             // append user and poll to socket
             request.username = payload.username;
             request.userId = Number(payload.userId);
-            request.accountId = Number(client.handshake?.auth.accountId);
+            request.accountId = accountId
 
             return true;
         } catch(e) {

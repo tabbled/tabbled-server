@@ -51,3 +51,13 @@ export class SetValueDto {
     field: string
     soft: boolean = true
 }
+
+export class ImportDataDto {
+    options: ImportDataOptionsDto
+    data: any[]
+}
+
+export class ImportDataOptionsDto {
+    replaceExisting: boolean
+    removeNotExisting: boolean
+}

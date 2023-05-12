@@ -1,5 +1,5 @@
 import { Context } from "../../entities/context";
-import { GetDataManyOptionsDto } from "../dto/datasource.dto";
+import { GetDataManyOptionsDto, ImportDataOptionsDto } from "../dto/datasource.dto";
 import { DataSource, QueryRunner } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
@@ -108,12 +108,15 @@ export class InternalDataSource {
 
     async getByIdRaw(id: string) : Promise<DataItem | undefined> {
         const rep = this.dataSource.getRepository(DataItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(` id = ${id} AND alias = '${this.config.alias}'`)
 
-        return await rep.findOneBy({
-            accountId: this.context.accountId,
-            alias: this.config.alias,
-            id: id
-        })
+        if (this.context.accountId) {
+            query.andWhere(`account_id = ${this.context.accountId}`)
+        }
+
+        return await query.getOne()
     }
 
     async getById(id: string) : Promise<any | undefined> {
@@ -125,36 +128,17 @@ export class InternalDataSource {
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        let item = {
-            id: id || String(flakeId.generateId()),
-            rev: "",
-            version: 1,
-            parentId: parentId,
-            alias: this.config.alias,
-            accountId: this.context.accountId,
-            data: value,
-            createdBy: this.context.userId,
-            updatedAt: new Date(),
-            updatedBy: this.context.userId,
-            createdAt: new Date(),
-            deletedBy: null,
-            deletedAt: null
-        }
-        item.rev = await this.createRevision(queryRunner, item)
+        let item = null
 
         try {
-            await queryRunner.manager.createQueryBuilder()
-                .insert()
-                .into(DataItem)
-                .values(item)
-                .execute()
+            item = await this.insertData(value, queryRunner, id, parentId)
             await queryRunner.commitTransaction();
-
         } catch (e) {
             await queryRunner.rollbackTransaction();
             throw e
+        } finally {
+            await queryRunner.release();
         }
-        await queryRunner.release();
 
 
         if (invokeEvents) {
@@ -179,25 +163,15 @@ export class InternalDataSource {
         await queryRunner.startTransaction()
 
         item.data = value
-        item.rev = await this.createRevision(queryRunner, item)
-        item.updatedAt = new Date()
-        item.updatedBy = this.context.userId
-
         try {
-            await queryRunner.manager.createQueryBuilder()
-                .insert()
-                .update(DataItem)
-                .set(item)
-                .andWhere({
-                    id: item.id
-                })
-                .execute()
+            await this.updateData(id, item, queryRunner)
             await queryRunner.commitTransaction();
         } catch (e) {
             await queryRunner.rollbackTransaction();
             throw e
+        } finally {
+            await queryRunner.release();
         }
-        await queryRunner.release();
 
         if (invokeEvents) {
             await this.invokeEvents('onUpdate', {
@@ -205,8 +179,48 @@ export class InternalDataSource {
                 new: item
             });
         }
+        return item
+    }
+
+    async insertData(data: any, queryRunner: QueryRunner, id?: string, parentId?: string): Promise<DataItem> {
+        let item = {
+            id: id || String(flakeId.generateId()),
+            rev: "",
+            version: 1,
+            parentId: parentId,
+            alias: this.config.alias,
+            accountId: this.context.accountId ? this.context.accountId : null,
+            data: data,
+            createdBy: this.context.userId,
+            updatedAt: new Date(),
+            updatedBy: this.context.userId,
+            createdAt: new Date(),
+            deletedBy: null,
+            deletedAt: null
+        }
+        item.rev = await this.createRevision(queryRunner, item)
+
+        await queryRunner.manager.createQueryBuilder()
+            .insert()
+            .into(DataItem)
+            .values(item)
+            .execute()
 
         return item
+    }
+
+    async updateData(id: string, item: DataItem, queryRunner: QueryRunner): Promise<void> {
+        item.rev = await this.createRevision(queryRunner, item)
+        item.updatedAt = new Date()
+        item.updatedBy = this.context.userId
+
+        await queryRunner.manager.createQueryBuilder()
+            .update(DataItem)
+            .set(item)
+            .andWhere({
+                id: item.id
+            })
+            .execute()
     }
 
     async removeById(id: string, invokeEvents = true, soft = true): Promise<DataItem> {
@@ -236,8 +250,10 @@ export class InternalDataSource {
         } catch (e) {
             await queryRunner.rollbackTransaction();
             throw e
+        } finally {
+            await queryRunner.release();
         }
-        await queryRunner.release();
+
 
         if (invokeEvents) {
             await this.invokeEvents('onRemove', {
@@ -257,6 +273,51 @@ export class InternalDataSource {
         item.data[field] = value
 
         return await this.updateById(id, item.data, invokeEvents)
+    }
+
+    async import(data: any[], options: ImportDataOptionsDto) {
+        console.log('import' ,data.length, options)
+        let queryRunner = this.dataSource.createQueryRunner()
+        await queryRunner.startTransaction()
+
+        let total = {
+            inserted: 0,
+            updated: 0
+        }
+
+        try {
+            for (let i in data) {
+                let newItem = data[i]
+
+
+
+                let existingItem = null
+
+                if (newItem.id) {
+                    existingItem = await this.getByIdRaw(newItem.id)
+                }
+
+                if (existingItem) {
+                    if (options.replaceExisting) {
+                        console.log('update existing item ',newItem.id)
+                        existingItem.data = newItem
+                        await this.updateData(existingItem.id, existingItem, queryRunner)
+                        total.updated++
+                    }
+                } else {
+                    console.log('insert new item ',newItem.id)
+                    await this.insertData(newItem, queryRunner, newItem.id, newItem.parentId)
+                    total.inserted++
+                }
+            }
+            await queryRunner.commitTransaction();
+        } catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e
+        } finally {
+            await queryRunner.release();
+        }
+        return total
     }
 
     private async createRevision(queryRunner: QueryRunner, item: DataItem) {

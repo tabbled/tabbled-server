@@ -1,7 +1,19 @@
-import { Controller, Param, HttpException, HttpStatus, Get, UseGuards, Req } from "@nestjs/common";
+import {
+    Controller,
+    Param,
+    HttpException,
+    HttpStatus,
+    Get,
+    UseGuards,
+    Req,
+    Post,
+    Body,
+    HttpCode
+} from "@nestjs/common";
 import { DataSourcesService } from './datasources.service';
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Request } from 'express';
+import { ImportDataDto } from "./dto/datasource.dto";
 
 @UseGuards(JwtAuthGuard)
 @Controller('datasources')
@@ -20,13 +32,41 @@ export class DataSourcesController {
             })
 
 
-            let data = ds.getMany()
+            let data = await ds.getMany()
 
             return {
                 data: data
             }
 
         } catch (e) {
+            throw new HttpException({
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                error: e.toString(),
+            }, HttpStatus.INTERNAL_SERVER_ERROR, {
+                cause: e.toString()
+            });
+        }
+    }
+
+    @Post(':alias/data/import')
+    @HttpCode(200)
+    async call(
+        @Param('alias') alias: string,
+        @Body() body: ImportDataDto,
+        @Req() req: Request
+    ) {
+        try {
+            let total = await this.dsService.importData(alias, body.data, body.options, {
+                accountId: req['accountId'],
+                userId: req['userId']
+            })
+
+            return {
+                success: true,
+                total: total
+            }
+        } catch (e) {
+            console.error(e)
             throw new HttpException({
                 status: HttpStatus.INTERNAL_SERVER_ERROR,
                 error: e.toString(),
