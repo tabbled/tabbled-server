@@ -98,7 +98,19 @@ export class InternalDataSource {
                 case "<=":
                 case ">":
                 case ">=": query.andWhere(`data ->> '${f.key}' ${f.op} '${f.compare}'`); break;
+                case "in": query.andWhere(`data ->> '${f.key}' IN (${arrayToSqlString(f.compare)})`); break;
+                case "!in": query.andWhere(`data ->> '${f.key}' NOT IN ('${arrayToSqlString(f.compare)}')`); break;
             }
+        }
+
+        function arrayToSqlString(arr) {
+            let str = ''
+            arr.forEach(item => {
+                if (str)
+                    str+=','
+                str += `'${item}'`
+            })
+            return str
         }
 
         console.log('getMany.query', query.getQuery())
