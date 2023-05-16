@@ -69,7 +69,11 @@ export class InternalDataSource {
     async getMany(options: GetDataManyOptionsDto = {}): Promise<any[]> {
         console.log("DataSource.getMany", JSON.stringify(options))
         let data = await this.getManyRaw(options);
-        return data.map(d => d.data)
+
+        if (this.config.isTree) {
+            return this.getNested(data)
+        } else
+            return data.map(d => d.data)
     }
 
     async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<any[]> {
@@ -133,7 +137,17 @@ export class InternalDataSource {
 
     async getById(id: string) : Promise<any | undefined> {
         let item = await this.getByIdRaw(id)
-        return item ? item.data : undefined
+
+        if (!item)
+            return undefined
+
+        let data:any = item.data
+
+        if (this.config.isTree) {
+            data.children = (await this.getChildren(id)).map(d => d.data)
+        }
+
+        return data
     }
 
     async insert(value: any,  id?: string, parentId?: string, invokeEvents = true): Promise<DataItem> {
@@ -285,6 +299,44 @@ export class InternalDataSource {
         item.data[field] = value
 
         return await this.updateById(id, item.data, invokeEvents)
+    }
+
+    async getNested(data: DataItem[]) {
+
+        return getChildren(null)
+
+        function getChildren(parentId) {
+            let f = data.filter((value => parentId ? value.parentId === parentId : !value.parentId ))
+
+            let nested = []
+
+            for(let i in f) {
+                const item = f[i]
+                let nestedItem:any = Object.assign({}, item.data)
+
+                nestedItem.children = getChildren(item.id)
+                nested.push(nestedItem)
+            }
+
+            return nested
+        }
+    }
+
+    async getChildren(parentId: string) {
+        const rep = this.dataSource.getRepository(DataItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(`alias = '${this.config.alias}' AND deleted_at IS NULL`)
+
+        if (this.context.accountId) {
+            query.andWhere(`account_id = ${this.context.accountId}`)
+        }
+
+        if (parentId) {
+            query.andWhere(`parent_id = '${parentId}'`)
+        }
+
+        return await query.getMany()
     }
 
     async import(data: any[], options: ImportDataOptionsDto) {

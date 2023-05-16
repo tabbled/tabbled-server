@@ -72,7 +72,7 @@ export class DataSourcesGateway {
 
     @SubscribeMessage('dataSources/data/insert')
     async insertData(@MessageBody() body: InsertDataDto, @ConnectedSocket() client: Socket) {
-        console.log('dataSources/data/insert, alias: ', body.alias, "id: ", body.id)
+        console.log('dataSources/data/insert, alias: ', body.alias, "id: ", body)
 
         try {
             let data = await this.dataSourcesService.insertData(
@@ -82,7 +82,8 @@ export class DataSourcesGateway {
                     accountId: client['accountId'],
                     userId: client['userId']
                 },
-                body.id
+                body.id,
+                body.parentId
             )
 
             return {

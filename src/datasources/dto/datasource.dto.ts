@@ -30,6 +30,7 @@ export class InsertDataDto {
     alias: string
     id?: string
     value: any
+    parentId?: string
 }
 
 export class UpdateDataByIdDto {
