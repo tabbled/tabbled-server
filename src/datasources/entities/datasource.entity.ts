@@ -4,6 +4,7 @@ import { DataSource, QueryRunner } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
 import { Queue } from "bull";
+import { FieldConfigInterface } from "../../entities/field";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -33,7 +34,7 @@ export interface HandlerInterface {
 }
 
 export interface DataSourceConfigInterface {
-    fields: any[],
+    fields: FieldConfigInterface[],
     type: DataSourceType,
     title?: string,
     alias: string,
@@ -51,11 +52,18 @@ export class InternalDataSource {
         this.dataSource = dataSource
         this.context = context
         this.functionsQueue = functionsQueue
+
+        for(const i in config.fields) {
+            let field = config.fields[i]
+            this.fieldByAlias.set(field.alias, field)
+        }
     }
     readonly config: DataSourceConfigInterface
     readonly dataSource: DataSource
     readonly context: Context
     readonly functionsQueue: Queue
+
+    private fieldByAlias: Map<string,FieldConfigInterface> = new Map()
 
     /**
      * @deprecated
@@ -88,22 +96,23 @@ export class InternalDataSource {
 
         if (options.take) query.take(options.take)
         if (options.skip) query.skip(options.skip)
-        if (options.sort) query.addOrderBy(`data ->> '${options.sort.field}'`, options.sort.ask ? "ASC" : "DESC")
+        if (options.sort) query.addOrderBy(`(data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
+
 
 
         for(let i in options.filter) {
             let f = options.filter[i]
             switch (f.op) {
-                case "==": query.andWhere(`data ->> '${f.key}' = '${f.compare}'`); break;
-                case "!=": query.andWhere(`data ->> '${f.key}' <> '${f.compare}'`); break;
-                case "like": query.andWhere(`data ->> '${f.key}' LIKE '${f.compare}'`); break;
-                case "!like": query.andWhere(`data ->> '${f.key}' NOT LIKE '${f.compare}'`); break;
+                case "==": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
+                case "!=": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
+                case "like": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} LIKE '${f.compare}'`); break;
+                case "!like": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT LIKE '${f.compare}'`); break;
                 case "<":
                 case "<=":
                 case ">":
-                case ">=": query.andWhere(`data ->> '${f.key}' ${f.op} '${f.compare}'`); break;
-                case "in": query.andWhere(`data ->> '${f.key}' IN (${arrayToSqlString(f.compare)})`); break;
-                case "!in": query.andWhere(`data ->> '${f.key}' NOT IN ('${arrayToSqlString(f.compare)}')`); break;
+                case ">=": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
+                case "in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
+                case "!in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
             }
         }
 
@@ -117,9 +126,30 @@ export class InternalDataSource {
             return str
         }
 
+
+
         console.log('getMany.query', query.getQuery())
         return await query.getMany()
 
+    }
+
+    castTypeToSql(alias) {
+        let field = this.fieldByAlias.get(alias)
+        if (!field)
+            return ""
+
+        let cast
+        switch (field.type) {
+            case "datetime": cast = '::timestamp'; break;
+            case "date": cast = '::timestamp::date'; break;
+            case "time": cast = '::timestamp::time'; break;
+            case "text":
+            case "string": cast = '::varchar'; break;
+            case "number": cast = '::numeric'; break;
+            default: cast = ""
+        }
+
+        return cast
     }
 
     async getByIdRaw(id: string) : Promise<DataItem | undefined> {
