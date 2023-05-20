@@ -1,6 +1,6 @@
 {
   "name": "tabbled-server",
-  "version": "0.2.31",
+  "version": "0.2.32",
   "public": true,
   "license": "MIT",
   "scripts": {
@@ -19,6 +19,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@jsreport/nodejs-client": "^3.0.0",
     "@nestjs/bull": "^0.6.3",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
