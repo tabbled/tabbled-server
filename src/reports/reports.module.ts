@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ReportsGateway } from './reports.gateway';
-import { ConfigService } from "../config/config.service";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 
 @Module({
-    providers: [ReportsGateway, ReportsService, ConfigService]
+    providers: [ReportsGateway, ReportsService, ConfigService],
+    imports: [ConfigModule]
 })
 export class ReportsModule {}

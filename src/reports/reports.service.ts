@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { RenderByIdDto, ReportDto } from "./dto/report.dto";
 import * as client from '@jsreport/nodejs-client'
-import { InjectRepository } from "@nestjs/typeorm";
+import { InjectDataSource } from "@nestjs/typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
-import { Repository } from "typeorm";
+import { DataSource } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 
 
 
 @Injectable()
 export class ReportsService {
-    constructor(@InjectRepository(ConfigItem)
-                private configRepository: Repository<ConfigItem>) {
+    constructor(@InjectDataSource('default')
+                private datasource: DataSource,
+                private configService: ConfigService) {
     }
     async renderById(renderByIdDto: RenderByIdDto) {
 
@@ -19,7 +21,7 @@ export class ReportsService {
             throw `Report by id "${renderByIdDto.id}" not found`
 
 
-        const jsreport =  client('http://localhost:5488')
+        const jsreport =  client(this.configService.get<string>('JSREPORT_URL'))
 
         return await jsreport.render({
             template: {
@@ -32,8 +34,9 @@ export class ReportsService {
     }
 
     async getById(id: string) :Promise<ReportDto | undefined> {
-        let item = await this.configRepository.createQueryBuilder()
-            .where(`alias = 'report' AND id = :id`, { id: id })
+        const rep = this.datasource.getRepository(ConfigItem);
+        let item = await rep.createQueryBuilder()
+            .where(`alias = 'report' AND id = :id and deleted_at IS NULL`, { id: id })
             .getOne()
         return item ? item.data : undefined
     }

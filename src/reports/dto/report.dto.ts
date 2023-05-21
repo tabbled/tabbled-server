@@ -1,5 +1,6 @@
 export class RenderByIdDto {
-  id: string;
+  id: string
+  context: any
 }
 
 export class ReportDto {
@@ -8,5 +9,5 @@ export class ReportDto {
     title: string
     template: string
     script: string
-    testData: string
+    testContext: string
 }
