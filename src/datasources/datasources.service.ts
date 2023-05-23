@@ -1,16 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { GetDataManyOptionsDto, ImportDataOptionsDto } from "./dto/datasource.dto";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
 import { DataSourceConfigInterface, InternalDataSource } from "./entities/datasource.entity";
 import { Context } from "../entities/context";
-import { Queue } from "bull";
-import { InjectQueue } from "@nestjs/bull";
+import { FunctionsService } from "../functions/functions.service";
 
 @Injectable()
 export class DataSourcesService {
-    constructor( @InjectQueue('functions') private functionsQueue: Queue,
+    constructor(@Inject(forwardRef(() => FunctionsService))
+                private functionsService: FunctionsService,
                  @InjectDataSource('default')
                 private datasource: DataSource,
                ) {
@@ -70,6 +70,6 @@ export class DataSourcesService {
             throw new Error('DataSource is not an internal source')
         }
 
-        return new InternalDataSource(config, this.datasource, this.functionsQueue, context)
+        return new InternalDataSource(config, this.datasource, this.functionsService, context)
     }
 }

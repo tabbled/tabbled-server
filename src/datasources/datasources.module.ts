@@ -1,16 +1,14 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from "@nestjs/common";
 import { DataSourcesService } from './datasources.service';
 import { DataSourcesGateway } from './datasources.gateway';
-import { BullModule } from "@nestjs/bull";
 import { DataSourcesController } from "./datasources.contreller";
+import { FunctionsModule } from "../functions/functions.module";
+import { FunctionsService } from "../functions/functions.service";
 
 @Module({
     controllers: [DataSourcesController],
-    providers: [DataSourcesGateway, DataSourcesService],
-    imports: [
-        BullModule.registerQueue({
-            name: "functions"
-        })
-    ]
+    providers: [DataSourcesGateway, DataSourcesService, FunctionsService],
+    imports: [forwardRef(() => FunctionsModule)],
+    exports: [DataSourcesService, FunctionsService]
 })
 export class DataSourcesModule {}

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
@@ -8,14 +8,11 @@ import { FlakeId } from '../flake-id'
 import { Context } from "../entities/context";
 import * as process from "process";
 import { DataSourcesService } from "../datasources/datasources.service";
-import { Processor, Process } from '@nestjs/bull';
-import { DoneCallback, Job } from "bull";
 
 @Injectable()
-@Processor('functions')
 export class FunctionsService {
     constructor(
-                @Inject(DataSourcesService)
+                @Inject(forwardRef(() => DataSourcesService) )
                 private dataSourcesService: DataSourcesService,
                 @InjectRepository(ConfigItem)
                 private configRepository: Repository<ConfigItem>,
@@ -59,7 +56,11 @@ export class FunctionsService {
         console.log('functions/call - ', func.alias)
         let ctx = Object.assign(JSON.parse(func.context), context)
 
-        const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, ctx)
+        return await this.runScript(func.script, ctx, vmConsole)
+    }
+
+    async runScript(script: string, context: any, vmConsole?: (...args) => void) {
+        const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, context)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
 
@@ -70,7 +71,7 @@ export class FunctionsService {
             wrapper: 'none',
             console: !!vmConsole ? 'redirect' : 'inherit',
             sandbox: {
-                ctx: ctx,
+                ctx: context,
                 dataSources: dsHelper,
                 request: requestHelper,
                 utilities: utils
@@ -84,10 +85,10 @@ export class FunctionsService {
 
         let res = null
         try {
-            res = await vm.run(func.script)
+            res = await vm.run(script)
         } catch (e) {
-            console.error(`Call function "${func.alias}" error: `, e)
-            throw `Call function "${func.alias}" error: ${e.toString()}`
+            console.error(`Run script error: `, e)
+            throw `${e.toString()}`
         } finally {
             process.off('uncaughtException', uncaughtException)
         }
@@ -101,19 +102,6 @@ export class FunctionsService {
         }
 
         return (res instanceof Promise) ? await res : res
-    }
-
-    @Process('call')
-    async callProcessor(job: Job, cb: DoneCallback) {
-        try {
-            console.log('callProcessor, funcId', job.data.functionId)
-            let res = await this.callById(job.data.functionId, job.data.context)
-            console.log('callProcessor, funcId', job.data.functionId)
-            cb(null,res)
-        } catch (e) {
-            cb(e)
-            throw e
-        }
     }
 }
 

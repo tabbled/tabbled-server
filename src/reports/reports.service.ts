@@ -1,20 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import { RenderByIdDto, ReportDto } from "./dto/report.dto";
 import * as client from '@jsreport/nodejs-client'
 import { InjectDataSource } from "@nestjs/typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
 import { DataSource } from "typeorm";
 import { ConfigService } from "@nestjs/config";
+import { FunctionsService } from "../functions/functions.service";
 
 
 
 @Injectable()
 export class ReportsService {
-    constructor(@InjectDataSource('default')
+    constructor(private functionsService: FunctionsService,
+                @InjectDataSource('default')
                 private datasource: DataSource,
                 private configService: ConfigService) {
     }
-    async renderById(renderByIdDto: RenderByIdDto) {
+    async renderById(renderByIdDto: RenderByIdDto, vmConsole?) {
 
         let report = await this.getById(renderByIdDto.id)
         if (!report)
@@ -23,13 +25,25 @@ export class ReportsService {
 
         const jsreport =  client(this.configService.get<string>('JSREPORT_URL'))
 
+        let data = renderByIdDto.context
+
+        try {
+            let res = await this.functionsService.runScript(report.script, data, vmConsole)
+            data = Object.assign(data, res)
+        } catch (e) {
+            throw `Error while running the preparing script`
+        }
+
+        console.log(data)
+
+
         return await jsreport.render({
             template: {
                 content: report.template,
                 engine: 'handlebars',
                 recipe: 'chrome-pdf'
             },
-            data: {}
+            data: data
         })
     }
 

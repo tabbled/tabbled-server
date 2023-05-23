@@ -3,8 +3,8 @@ import { GetDataManyOptionsDto, ImportDataOptionsDto } from "../dto/datasource.d
 import { DataSource, QueryRunner } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
-import { Queue } from "bull";
 import { FieldConfigInterface } from "../../entities/field";
+import { FunctionsService } from "../../functions/functions.service";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -47,11 +47,11 @@ export interface DataSourceConfigInterface {
 }
 
 export class InternalDataSource {
-    constructor(config: DataSourceConfigInterface, dataSource: DataSource, functionsQueue: Queue, context: Context) {
+    constructor(config: DataSourceConfigInterface, dataSource: DataSource, functionsService: FunctionsService, context: Context) {
         this.config = config
         this.dataSource = dataSource
         this.context = context
-        this.functionsQueue = functionsQueue
+        this.functionsService = functionsService
 
         for(const i in config.fields) {
             let field = config.fields[i]
@@ -61,7 +61,7 @@ export class InternalDataSource {
     readonly config: DataSourceConfigInterface
     readonly dataSource: DataSource
     readonly context: Context
-    readonly functionsQueue: Queue
+    readonly functionsService: FunctionsService
 
     private fieldByAlias: Map<string,FieldConfigInterface> = new Map()
 
@@ -443,10 +443,9 @@ export class InternalDataSource {
 
 
                 try {
-                    this.functionsQueue.add('call', {
-                        functionId: event_handler.handler.functionId,
-                        context: Object.assign(this.context, context)
-                    })
+                    this.functionsService.callById(
+                        event_handler.handler.functionId,
+                        Object.assign(this.context, context))
                     console.log(`Event handler found "${event}" for dataSource "${this.config.alias}". Task to call func ${event_handler.handler.functionId} added`)
                 } catch (e) {
                     console.error(e)
