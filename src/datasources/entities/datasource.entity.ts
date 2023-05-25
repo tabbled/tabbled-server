@@ -102,11 +102,11 @@ export class InternalDataSource {
             for(let i in items) {
                 let item = items[i]
                 let title = ""
-                if (item[alias]) {
+                if (item[alias] && BigInt(item[alias])) {
                     const rep = self.dataSource.getRepository(DataItem);
                     let linkItem = await rep.createQueryBuilder()
                         .select()
-                        .where(`id = ${item[alias]}`)
+                        .where(`id = '${BigInt(item[alias])}'`)
                         .getOne()
 
                     if (linkItem)
