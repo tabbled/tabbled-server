@@ -1,11 +1,10 @@
-import { FlakeId } from '../flake-id'
-let flakeId = new FlakeId()
-
-
 export type FieldComponentType = 'handler' | 'dataset' | 'datasource' | 'elements' | 'field'
 export type FieldDataType = 'number' | 'string' | 'bool' | 'text' | 'list' | 'enum' | 'status' | 'image' | 'datetime' | 'date' | 'time' | 'link' | 'table'
 export type FieldType = FieldComponentType | FieldDataType
 export type FieldListOfType = 'dataset' | 'element' | 'column' | 'field' | 'action'
+
+export type NumericFormatType = 'none' | 'decimal' | 'currency'
+export type FormatType = NumericFormatType
 
 export function getFieldDataTypes():Array<FieldDataType> {
     return [
@@ -58,26 +57,6 @@ export interface FieldConfigInterface {
     setValue?: string             // Evaluate when value changed manually by user or by another script
     getReadonly?: string
     dataSetField?: string               // For 'field' type that used for looking fields list in set dataset on PageSettingPanel
-}
-
-export async function generateEntityWithDefault(fields: FieldConfigInterface[]): Promise<any> {
-    let item = {
-        id: flakeId.generateId().toString()
-    }
-    for (let i in fields) {
-        const f = fields[i]
-
-        switch (f.type) {
-            case "bool": item[f.alias] = f.default ? f.default : false; break;
-            case "string":
-            case "enum":
-            case "text": item[f.alias] = f.default ? f.default : ""; break;
-            case "list":
-            case "elements":
-            case "table": item[f.alias] = []; break;
-            case "handler": item[f.alias] = f.isMultiple ? [] : {type: 'script', script: ""};break;
-            default: item[f.alias] = null;
-        }
-    }
-    return item;
+    format?: FormatType,
+    autoincrement?: boolean
 }

@@ -273,7 +273,46 @@ export class InternalDataSource {
         return item
     }
 
+    async setDefaultValues(data: any):Promise<any> {
+        let item = {
+            id: data.id || flakeId.generateId().toString()
+        }
+        for (let i in this.config.fields) {
+            const f = this.config.fields[i]
+
+            if (!(f.alias in data)) {
+                switch (f.type) {
+                    case "bool": item[f.alias] = f.default ? f.default : false; break;
+                    case "string":
+                    case "enum":
+                    case "text": item[f.alias] = f.default ? f.default : ""; break;
+                    case "list":
+                    case "table": item[f.alias] = []; break;
+                    default: item[f.alias] = null;
+                }
+            } else {
+                item[f.alias] = data[f.alias]
+            }
+
+            if (f.type === 'number' && f.autoincrement && !data[f.alias]) {
+                const rep = this.dataSource.getRepository(DataItem);
+                let query = rep.createQueryBuilder()
+                    .select(`MAX((data ->> '${f.alias}')::numeric)`)
+                    .where(`alias = '${this.config.alias}'`)
+
+
+                let d = await  query.getRawOne()
+
+                item[f.alias] = Number(d.max) + 1
+            }
+        }
+        return item;
+    }
+
     async insertData(data: any, queryRunner: QueryRunner, id?: string, parentId?: string): Promise<DataItem> {
+
+        let mData = await this.setDefaultValues(data)
+
         let item = {
             id: id || String(flakeId.generateId()),
             rev: "",
@@ -281,7 +320,7 @@ export class InternalDataSource {
             parentId: parentId,
             alias: this.config.alias,
             accountId: this.context.accountId ? this.context.accountId : null,
-            data: data,
+            data: mData,
             createdBy: this.context.userId,
             updatedAt: new Date(),
             updatedBy: this.context.userId,
