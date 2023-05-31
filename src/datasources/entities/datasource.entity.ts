@@ -1,5 +1,5 @@
 import { Context } from "../../entities/context";
-import { GetDataManyOptionsDto, ImportDataOptionsDto } from "../dto/datasource.dto";
+import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "../dto/datasource.dto";
 import { DataSource, QueryRunner } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
@@ -69,19 +69,23 @@ export class InternalDataSource {
      * @deprecated
      * Get all data store from the data source
      */
-    async getAll(): Promise<any[]> {
+    async getAll(): Promise<GetManyResponse> {
         console.log('DataSource.getAll', this.context)
         return await this.getMany()
     }
 
-    async getMany(options: GetDataManyOptionsDto = {}): Promise<any[]> {
+    async getMany(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
         console.log("DataSource.getMany", JSON.stringify(options))
         let data = await this.getManyRaw(options);
 
         if (this.config.isTree) {
-            return this.getNested(data)
+            return {
+                items: await this.getNested(data.items),
+                count: data.count
+            }
         }
-        let items = data.map(d => d.data)
+
+        let items = data.items.map(d => d.data)
         let self = this
 
         //Inject link field titles
@@ -92,11 +96,10 @@ export class InternalDataSource {
             }
         }
 
-
-
-        return items
-
-
+        return {
+            items: items,
+            count: data.count
+        }
 
         async function injectTitle(alias:string) {
             for(let i in items) {
@@ -119,7 +122,7 @@ export class InternalDataSource {
         }
     }
 
-    async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<any[]> {
+    async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
         const rep = this.dataSource.getRepository(DataItem);
         let query = rep.createQueryBuilder()
             .select()
@@ -164,8 +167,10 @@ export class InternalDataSource {
 
 
         console.log('getMany.query', query.getQuery())
-        return await query.getMany()
-
+        return {
+            items: await query.getMany(),
+            count: await query.getCount()
+        }
     }
 
     castTypeToSql(alias) {

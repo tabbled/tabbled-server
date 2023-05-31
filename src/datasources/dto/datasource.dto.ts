@@ -62,3 +62,8 @@ export class ImportDataOptionsDto {
     replaceExisting: boolean
     removeNotExisting: boolean
 }
+
+export class GetManyResponse {
+    items: any[]
+    count: number
+}

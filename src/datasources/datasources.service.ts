@@ -1,5 +1,5 @@
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { GetDataManyOptionsDto, ImportDataOptionsDto } from "./dto/datasource.dto";
+import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "./dto/datasource.dto";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
@@ -16,7 +16,7 @@ export class DataSourcesService {
                ) {
     }
 
-    async getDataMany(alias: string, options: GetDataManyOptionsDto, context: Context) : Promise<any[]> {
+    async getDataMany(alias: string, options: GetDataManyOptionsDto, context: Context) : Promise<GetManyResponse> {
         let ds = await this.getByAlias(alias, context)
         return await ds.getMany(options)
     }
