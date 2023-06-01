@@ -1,6 +1,6 @@
 import { Context } from "../../entities/context";
 import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "../dto/datasource.dto";
-import { DataSource, QueryRunner } from "typeorm";
+import { DataSource, QueryRunner, Brackets } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
 import { FieldConfigInterface } from "../../entities/field";
@@ -151,6 +151,35 @@ export class InternalDataSource {
                 case ">=": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
                 case "in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
                 case "!in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
+            }
+        }
+
+        if(options.search) {
+            console.log('search - ', options.search)
+
+            let searchFields:Array<FieldConfigInterface> = []
+            this.config.fields.forEach(field => {
+                if (field.searchable) {
+                    searchFields.push(field)
+                }
+            })
+
+            //for cases when no fields that chosen as searchable
+            if (!searchFields.length) {
+                let f = this.fieldByAlias.get('name')
+                if (f) searchFields.push(f)
+            }
+
+            if (searchFields.length) {
+                query.andWhere(new Brackets(qb => {
+                    searchFields.forEach(f => {
+                        if (f.type === 'string' || f.type === 'text') {
+                            qb.orWhere(`(data ->> '${f.alias}')::varchar LIKE '%${options.search}%'`)
+                        } else if (f.type === 'number') {
+                            qb.orWhere(`(data ->> '${f.alias}')::varchar = '${options.search}'`)
+                        }
+                    })
+                }))
             }
         }
 

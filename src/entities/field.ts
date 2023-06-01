@@ -57,6 +57,7 @@ export interface FieldConfigInterface {
     setValue?: string             // Evaluate when value changed manually by user or by another script
     getReadonly?: string
     dataSetField?: string               // For 'field' type that used for looking fields list in set dataset on PageSettingPanel
-    format?: FormatType,
-    autoincrement?: boolean
+    format?: FormatType, // // Only for string and number types
+    autoincrement?: boolean, // Only for number type
+    searchable?: boolean // Only for string and number types
 }

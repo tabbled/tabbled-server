@@ -13,6 +13,7 @@ export class GetDataManyDto {
 
 export class GetDataManyOptionsDto {
     filter?: FilterItemInterface[]
+    search?: string
     take?: number = 100
     skip?: number = 0
     sort?: {
