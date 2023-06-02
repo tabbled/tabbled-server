@@ -143,8 +143,8 @@ export class InternalDataSource {
             switch (f.op) {
                 case "==": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
                 case "!=": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
-                case "like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} LIKE '${f.compare}'`); break;
-                case "!like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT LIKE '${f.compare}'`); break;
+                case "like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} ILIKE '${f.compare}'`); break;
+                case "!like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT ILIKE '${f.compare}'`); break;
                 case "<":
                 case "<=":
                 case ">":
@@ -174,12 +174,12 @@ export class InternalDataSource {
                 query.andWhere(new Brackets(qb => {
                     searchFields.forEach(f => {
                         if (f.type === 'string' || f.type === 'text') {
-                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar LIKE '%${options.search}%'`)
+                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar ILIKE '%${options.search}%'`)
                         } else if (f.type === 'number') {
                             qb.orWhere(`(ds.data ->> '${f.alias}')::varchar = '${options.search}'`)
                         } else if (f.type === 'link') {
                             query.leftJoin('data_items', `${f.alias}_link`, `(ds.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
-                            qb.orWhere(`(${f.alias}_link.data ->> 'name')::varchar LIKE '%${options.search}%'`)
+                            qb.orWhere(`(${f.alias}_link.data ->> 'name')::varchar ILIKE '%${options.search}%'`)
                         }
                     })
                 }))
