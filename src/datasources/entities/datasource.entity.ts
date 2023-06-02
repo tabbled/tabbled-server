@@ -124,33 +124,33 @@ export class InternalDataSource {
 
     async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
         const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder()
+        let query = rep.createQueryBuilder('ds')
             .select()
-            .where(`alias = '${this.config.alias}' AND deleted_at IS NULL`)
+            .where(`ds.alias = '${this.config.alias}' AND ds.deleted_at IS NULL`)
 
         if (this.context.accountId) {
-            query.andWhere(`account_id = ${this.context.accountId}`)
+            query.andWhere(`ds.account_id = ${this.context.accountId}`)
         }
 
         if (options.take) query.take(options.take)
         if (options.skip) query.skip(options.skip)
-        if (options.sort) query.addOrderBy(`(data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
+        if (options.sort) query.addOrderBy(`(ds.data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
 
 
 
         for(let i in options.filter) {
             let f = options.filter[i]
             switch (f.op) {
-                case "==": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
-                case "!=": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
-                case "like": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} LIKE '${f.compare}'`); break;
-                case "!like": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT LIKE '${f.compare}'`); break;
+                case "==": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
+                case "!=": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
+                case "like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} LIKE '${f.compare}'`); break;
+                case "!like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT LIKE '${f.compare}'`); break;
                 case "<":
                 case "<=":
                 case ">":
-                case ">=": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
-                case "in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
-                case "!in": query.andWhere(`(data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
+                case ">=": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
+                case "in": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
+                case "!in": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
             }
         }
 
@@ -174,9 +174,12 @@ export class InternalDataSource {
                 query.andWhere(new Brackets(qb => {
                     searchFields.forEach(f => {
                         if (f.type === 'string' || f.type === 'text') {
-                            qb.orWhere(`(data ->> '${f.alias}')::varchar LIKE '%${options.search}%'`)
+                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar LIKE '%${options.search}%'`)
                         } else if (f.type === 'number') {
-                            qb.orWhere(`(data ->> '${f.alias}')::varchar = '${options.search}'`)
+                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar = '${options.search}'`)
+                        } else if (f.type === 'link') {
+                            query.leftJoin('data_items', `${f.alias}_link`, `(ds.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
+                            qb.orWhere(`(${f.alias}_link.data ->> 'name')::varchar LIKE '%${options.search}%'`)
                         }
                     })
                 }))
