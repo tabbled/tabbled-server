@@ -1,6 +1,6 @@
 {
   "name": "tabbled-server",
-  "version": "0.2.39",
+  "version": "0.2.40",
   "public": true,
   "license": "MIT",
   "scripts": {

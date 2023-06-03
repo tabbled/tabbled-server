@@ -1,6 +1,6 @@
 import { Context } from "../../entities/context";
 import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "../dto/datasource.dto";
-import { DataSource, QueryRunner, Brackets } from "typeorm";
+import { DataSource, QueryRunner, Brackets, SelectQueryBuilder } from "typeorm";
 import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
 import { FieldConfigInterface } from "../../entities/field";
@@ -76,81 +76,108 @@ export class InternalDataSource {
 
     async getMany(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
         console.log("DataSource.getMany", JSON.stringify(options))
-        let data = await this.getManyRaw(options);
+
+        const sal = 'ds'
+        let query = this.getManyQueryBuilder(options, sal)
+
+        let select = [`${sal}."id"`, `${sal}."parent_id" as "parentId"`]
+        let fields = options.fields && options.fields.length ? options.fields : [...this.fieldByAlias.keys()]
+
+        for(let i in fields) {
+            let f = this.fieldByAlias.get(fields[i])
+            if (!f) continue
+
+            select.push(`(${sal}.data ->> '${f.alias}')${this.castTypeToSql(f.alias)} as ${f.alias}`)
+        }
+        query.select(select)
+
+        console.log('getMany.query', query.getQuery())
+
+        let data = await query.getRawMany()
 
         if (this.config.isTree) {
             return {
-                items: await this.getNested(data.items),
-                count: data.count
+                items: await this.getNested(data),
+                count: data.length
             }
         }
+        //let self = this
 
-        let items = data.items.map(d => d.data)
-        let self = this
-
-        //Inject link field titles
-        for (const i in this.config.fields) {
-            let field = this.config.fields[i]
-            if (field.type === 'link') {
-                await injectTitle(field.alias)
-            }
-        }
+        // //Inject link field titles
+        // for (const i in this.config.fields) {
+        //     let field = this.config.fields[i]
+        //     if (field.type === 'link') {
+        //         await injectTitle(field.alias)
+        //     }
+        // }
 
         return {
-            items: items,
-            count: data.count
+            items: data,
+            count: await query.getCount()
         }
 
-        async function injectTitle(alias:string) {
-            for(let i in items) {
-                let item = items[i]
-                let title = ""
-                if (item[alias] && BigInt(item[alias])) {
-                    const rep = self.dataSource.getRepository(DataItem);
-                    let linkItem = await rep.createQueryBuilder()
-                        .select()
-                        .where(`id = '${BigInt(item[alias])}'`)
-                        .getOne()
-
-                    if (linkItem)
-                        title = linkItem.data['name'].toString()
-
-                }
-
-                item[`_${alias}_title`] = title
-            }
-        }
+        // async function injectTitle(alias:string) {
+        //     for(let i in data) {
+        //         let item = data[i]
+        //         let title = ""
+        //         if (item[alias] && BigInt(item[alias])) {
+        //             const rep = self.dataSource.getRepository(DataItem);
+        //             let linkItem = await rep.createQueryBuilder()
+        //                 .select()
+        //                 .where(`id = '${BigInt(item[alias])}'`)
+        //                 .getOne()
+        //
+        //             if (linkItem)
+        //                 title = linkItem.data['name'].toString()
+        //
+        //         }
+        //
+        //         item[`_${alias}_title`] = title
+        //     }
+        // }
     }
 
     async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
-        const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder('ds')
+
+        let query = this.getManyQueryBuilder(options)
             .select()
-            .where(`ds.alias = '${this.config.alias}' AND ds.deleted_at IS NULL`)
+
+        console.log('getMany.query', query.getQuery())
+
+        return {
+            items: await query.getMany(),
+            count: await query.getCount()
+        }
+    }
+
+    getManyQueryBuilder(options: GetDataManyOptionsDto = {}, alias = 'ds'):SelectQueryBuilder<DataItem> {
+        const rep = this.dataSource.getRepository(DataItem);
+        let query = rep.createQueryBuilder(alias)
+            .where(`${alias}.alias = '${this.config.alias}' AND ${alias}.deleted_at IS NULL`)
 
         if (this.context.accountId) {
-            query.andWhere(`ds.account_id = ${this.context.accountId}`)
+            query.andWhere(`${alias}.account_id = ${this.context.accountId}`)
         }
 
         if (options.take) query.take(options.take)
         if (options.skip) query.skip(options.skip)
-        if (options.sort) query.addOrderBy(`(ds.data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
+        if (options.sort) query.addOrderBy(`(${alias}.data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
 
 
 
         for(let i in options.filter) {
             let f = options.filter[i]
             switch (f.op) {
-                case "==": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
-                case "!=": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
-                case "like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} ILIKE '${f.compare}'`); break;
-                case "!like": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT ILIKE '${f.compare}'`); break;
+                case "==": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
+                case "!=": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
+                case "like": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} ILIKE '${f.compare}'`); break;
+                case "!like": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT ILIKE '${f.compare}'`); break;
                 case "<":
                 case "<=":
                 case ">":
-                case ">=": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
-                case "in": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
-                case "!in": query.andWhere(`(ds.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
+                case ">=": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
+                case "in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
+                case "!in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
             }
         }
 
@@ -174,17 +201,19 @@ export class InternalDataSource {
                 query.andWhere(new Brackets(qb => {
                     searchFields.forEach(f => {
                         if (f.type === 'string' || f.type === 'text') {
-                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar ILIKE '%${options.search}%'`)
+                            qb.orWhere(`(${alias}.data ->> '${f.alias}')::varchar ILIKE '%${options.search}%'`)
                         } else if (f.type === 'number') {
-                            qb.orWhere(`(ds.data ->> '${f.alias}')::varchar = '${options.search}'`)
+                            qb.orWhere(`(${alias}.data ->> '${f.alias}')::varchar = '${options.search}'`)
                         } else if (f.type === 'link') {
-                            query.leftJoin('data_items', `${f.alias}_link`, `(ds.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
+                            query.leftJoin('data_items', `${f.alias}_link`, `(${alias}.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
                             qb.orWhere(`(${f.alias}_link.data ->> 'name')::varchar ILIKE '%${options.search}%'`)
                         }
                     })
                 }))
             }
         }
+
+        return query
 
         function arrayToSqlString(arr) {
             let str = ''
@@ -196,13 +225,6 @@ export class InternalDataSource {
             return str
         }
 
-
-
-        console.log('getMany.query', query.getQuery())
-        return {
-            items: await query.getMany(),
-            count: await query.getCount()
-        }
     }
 
     castTypeToSql(alias) {
@@ -453,7 +475,7 @@ export class InternalDataSource {
 
             for(let i in f) {
                 const item = f[i]
-                let nestedItem:any = Object.assign({}, item.data)
+                let nestedItem:any = Object.assign({}, item)
 
                 nestedItem.children = getChildren(item.id)
                 nested.push(nestedItem)
