@@ -238,7 +238,7 @@ export class InternalDataSource {
             case "date": cast = '::timestamp::date'; break;
             case "time": cast = '::timestamp::time'; break;
             case "text":
-            case "string": cast = '::varchar'; break;
+            case "string": cast = field.isMultiple ? '::jsonb' : '::varchar'; break;
             case "number": cast = '::numeric'; break;
             default: cast = ""
         }
