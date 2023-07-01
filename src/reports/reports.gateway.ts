@@ -25,6 +25,7 @@ export class ReportsGateway {
                 data: await re.body()
             }
         } catch (e) {
+            console.error(e)
             return {
                 success: false,
                 error_message: e.toString()

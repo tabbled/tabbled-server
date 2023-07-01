@@ -22,16 +22,19 @@ export class ReportsService {
         if (!report)
             throw `Report by id "${renderByIdDto.id}" not found`
 
-
         const jsreport =  client(this.configService.get<string>('JSREPORT_URL'))
 
-        let data = renderByIdDto.context
+        let data = {}
+        data = Object.assign(data, JSON.parse(report.testContext))
+        data = Object.assign(data, renderByIdDto.context)
 
         try {
             let res = await this.functionsService.runScript(report.script, data, vmConsole)
+
             data = Object.assign(data, res)
         } catch (e) {
-            throw `Error while running the preparing script`
+            console.error(e)
+            throw `Error while running the preparing script - ${e.toString()}`
         }
 
         console.log(data)
