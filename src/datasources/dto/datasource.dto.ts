@@ -7,7 +7,6 @@ export interface FilterItemInterface {
 
 export class GetDataManyDto {
     alias: string
-
     options: GetDataManyOptionsDto
 }
 
@@ -21,6 +20,7 @@ export class GetDataManyOptionsDto {
         field: string
         ask: boolean
     }
+    include?: string[]
 }
 
 export class GetDataByIdDto {

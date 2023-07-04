@@ -95,6 +95,18 @@ export class InternalDataSource {
 
         let data = await query.getRawMany()
 
+        // Includes additional ids to response
+        if (options.include) {
+            let additional = options.include.filter( (el) => {
+                    return !data.find((val) => val.id === el )
+            })
+
+            if (additional.length) {
+                query.andWhere(`id IN (:ids)`, {ids: additional.join(',')})
+                data = data.concat(await query.getRawMany())
+            }
+        }
+
         if (this.config.isTree) {
             return {
                 items: await this.getNested(data),
