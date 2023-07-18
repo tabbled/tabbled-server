@@ -21,6 +21,8 @@ export class GetDataManyOptionsDto {
         ask: boolean
     }
     include?: string[]
+    id?: string[]
+    parentId?: string
 }
 
 export class GetDataByIdDto {
@@ -66,6 +68,13 @@ export class ImportDataOptionsDto {
 }
 
 export class GetManyResponse {
-    items: any[]
+    items: GetManyItemResponse[]
     count: number
+}
+
+export class GetManyItemResponse {
+    id: string
+    parentId?: string
+    hasChildren?: number
+    [name: string]: any | never
 }

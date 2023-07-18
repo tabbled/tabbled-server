@@ -88,12 +88,35 @@ export class InternalDataSource {
             if (!f) continue
 
             select.push(`(${sal}.data ->> '${f.alias}')${this.castTypeToSql(f.alias)} as ${f.alias}`)
+
+            if (f.type === 'link') {
+                const displayProp = f.displayProp ? f.displayProp : 'name'
+                if (!f.isMultiple) {
+                    query.leftJoin(`data_items`,
+                        `link_${f.alias}`,
+                        `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`)
+                    select.push(`(link_${f.alias}.data ->> '${displayProp}') as __${f.alias}_title`)
+                } else {
+                    select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' ${displayProp}
+                              FROM data_items  
+                              WHERE alias = '${f.datasource}' 
+                              and id::text in (SELECT * FROM jsonb_array_elements_text((${sal}.data ->> '${f.alias}')::jsonb))) t
+                             ) __${f.alias}_entities`)
+                }
+            }
         }
+
+        if (this.config.isTree) {
+            select.push(`CASE WHEN (SELECT count(*) FROM data_items WHERE parent_id = ${sal}."id" and alias = '${this.config.alias}' and deleted_at IS NULL LIMIT 1) > 0 THEN true ELSE false END  "hasChildren"`)
+        }
+
         query.select(select)
 
         console.log('getMany.query', query.getQuery())
 
         let data = await query.getRawMany()
+
+        console.log(data.length)
 
         // Includes additional ids to response
         if (options.include) {
@@ -102,51 +125,15 @@ export class InternalDataSource {
             })
 
             if (additional.length) {
-                query.andWhere(`id IN (:ids)`, {ids: additional.join(',')})
+                query.andWhere(`${sal}.id IN (${additional.join(',')})`)
                 data = data.concat(await query.getRawMany())
             }
         }
-
-        if (this.config.isTree) {
-            return {
-                items: await this.getNested(data),
-                count: data.length
-            }
-        }
-        //let self = this
-
-        // //Inject link field titles
-        // for (const i in this.config.fields) {
-        //     let field = this.config.fields[i]
-        //     if (field.type === 'link') {
-        //         await injectTitle(field.alias)
-        //     }
-        // }
 
         return {
             items: data,
             count: await query.getCount()
         }
-
-        // async function injectTitle(alias:string) {
-        //     for(let i in data) {
-        //         let item = data[i]
-        //         let title = ""
-        //         if (item[alias] && BigInt(item[alias])) {
-        //             const rep = self.dataSource.getRepository(DataItem);
-        //             let linkItem = await rep.createQueryBuilder()
-        //                 .select()
-        //                 .where(`id = '${BigInt(item[alias])}'`)
-        //                 .getOne()
-        //
-        //             if (linkItem)
-        //                 title = linkItem.data['name'].toString()
-        //
-        //         }
-        //
-        //         item[`_${alias}_title`] = title
-        //     }
-        // }
     }
 
     async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
@@ -154,7 +141,7 @@ export class InternalDataSource {
         let query = this.getManyQueryBuilder(options)
             .select()
 
-        console.log('getMany.query', query.getQuery())
+        console.log('getManyRaw.query', query.getQuery())
 
         return {
             items: await query.getMany(),
@@ -171,8 +158,8 @@ export class InternalDataSource {
             query.andWhere(`${alias}.account_id = ${this.context.accountId}`)
         }
 
-        if (options.take) query.take(options.take)
-        if (options.skip) query.skip(options.skip)
+        if (options.take) query.limit(options.take)
+        if (options.skip) query.offset(options.skip)
         if (options.sort) query.addOrderBy(`(${alias}.data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
 
 
@@ -191,6 +178,14 @@ export class InternalDataSource {
                 case "in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
                 case "!in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
             }
+        }
+
+        if (this.config.isTree && options.parentId !== undefined) {
+            query.andWhere(options.parentId ? `parent_id = ${options.parentId}` : `parent_id IS NULL`)
+        }
+
+        if (options.id && options.id.length > 0) {
+            query.andWhere(`id IN (${options.id.join(',')})`)
         }
 
         if(options.search) {
@@ -217,8 +212,8 @@ export class InternalDataSource {
                         } else if (f.type === 'number') {
                             qb.orWhere(`(${alias}.data ->> '${f.alias}')::varchar = '${options.search}'`)
                         } else if (f.type === 'link') {
-                            query.leftJoin('data_items', `${f.alias}_link`, `(${alias}.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
-                            qb.orWhere(`(${f.alias}_link.data ->> 'name')::varchar ILIKE '%${options.search}%'`)
+                            //query.leftJoin('data_items', `${f.alias}_link`, `(${alias}.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
+                            qb.orWhere(`(${alias}.data ->> '__${f.alias}_title')::varchar ILIKE '%${options.search}%'`)
                         }
                     })
                 }))
@@ -246,12 +241,16 @@ export class InternalDataSource {
 
         let cast
         switch (field.type) {
+            case "bool": cast = '::bool'; break;
             case "datetime": cast = '::timestamp'; break;
             case "date": cast = '::timestamp::date'; break;
             case "time": cast = '::timestamp::time'; break;
             case "text":
-            case "string": cast = field.isMultiple ? '::jsonb' : '::varchar'; break;
-            case "number": cast = '::numeric'; break;
+            case "link":
+            case "enum":
+            case "string": cast = ''; break; //cast = field.isMultiple ? '::jsonb' : '::varchar';
+            case "number": cast = '::float'; break;
+
             default: cast = ""
         }
 
