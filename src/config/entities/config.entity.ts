@@ -7,10 +7,10 @@ import {
 @Entity({name: "config"})
 export class ConfigItem {
     @PrimaryColumn({ type: "bigint"})
-    id: number;
+    id: string;
 
     @Column({ type: "bigint", name: 'rev'})
-    rev: number;
+    rev: string;
 
     @Column({ type: "bigint", name: 'version'})
     version: number;

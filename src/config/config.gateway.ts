@@ -3,7 +3,8 @@ import { ConfigService } from './config.service';
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Server, Socket } from "socket.io";
-import { ConfigImportDto } from "./dto/request.dto";
+import { ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto, UpsertDto } from "./dto/request.dto";
+import { RemoveDataByIdDto } from "../datasources/dto/datasource.dto";
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
@@ -14,12 +15,83 @@ export class ConfigGateway {
     server: Server;
 
     @SubscribeMessage('config/getMany')
-    async getMany(@MessageBody() msg: any, @ConnectedSocket() client: Socket) : Promise<any> {
-        let data = await this.configService.getMany()
+    async getMany(@MessageBody() msg: GetManyDto, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/getMany', msg)
 
-        return {
-            success: true,
-            data: data
+        try {
+            let data = await this.configService.getMany(msg)
+
+            return {
+                success: true,
+                data: data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
+    @SubscribeMessage('config/getById')
+    async getById(@MessageBody() msg: GetByIdDto, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/getById', msg)
+
+        try {
+            let data = await this.configService.getByIdRaw(msg)
+            return {
+                success: true,
+                data: data.data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+}
+
+    @SubscribeMessage('config/getByKey')
+    async getByKey(@MessageBody() msg: GetByKeyDto, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/getByKey', msg)
+
+        try {
+            let data = await this.configService.getByKeyRaw(msg)
+
+            return {
+                success: true,
+                data: data.data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
+    @SubscribeMessage('config/insert')
+    async insert(@MessageBody() msg: UpsertDto, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/insert', msg)
+
+        try {
+            let item = await this.configService.insert(msg.alias, msg.id, msg.value, {
+                accountId: client['accountId'],
+                userId: client['userId']
+            })
+            return {
+                success: true,
+                data: item.data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
         }
     }
 
@@ -46,36 +118,52 @@ export class ConfigGateway {
         }
     }
 
-    @SubscribeMessage('config/getChanges')
-    async getChanges(@MessageBody() msg: any, @ConnectedSocket() client: Socket) : Promise<any> {
-
-        console.log('config/getChanges', msg)
+    @SubscribeMessage('config/updateById')
+    async updateById(@MessageBody() body: UpsertDto, @ConnectedSocket() client: Socket) {
+        console.log('config/updateById, alias: ', body.alias, "id: ", body.id)
 
         try {
-            let data = await this.configService.getManyAfterRevision(Number(msg.lastRevision))
-
-            let items = {}
-            let lastRev = BigInt(msg.lastRevision)
-
-            for(let i in data) {
-                const item = data[i]
-                if (!items[item.alias]) {
-                    items[item.alias] = []
+            let data = await this.configService.updateById(
+                body.alias,
+                body.id,
+                body.value,
+                {
+                    accountId: client['accountId'],
+                    userId: client['userId']
                 }
-                items[item.alias].push(item)
-
-                if (BigInt(item.rev) > lastRev ) {
-                    lastRev = BigInt(item.rev)
-                }
-            }
+            )
 
             return {
                 success: true,
-                data: {
-                    items: items,
-                    lastRev: lastRev.toString(),
-                    length: data.length
-                }
+                data: data,
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
+    @SubscribeMessage('config/removeById')
+    async removeById(@MessageBody() body: RemoveDataByIdDto, @ConnectedSocket() client: Socket) {
+        console.log('config/removeById, alias: ', body.alias, "id: ", body.id)
+
+        try {
+            let data = await this.configService.removeById(
+                body.alias,
+                body.id,
+                {
+                    accountId: client['accountId'],
+                    userId: client['userId']
+                },
+                body.soft
+            )
+
+            return {
+                success: true,
+                data: data,
             }
         } catch (e) {
             console.error(e)

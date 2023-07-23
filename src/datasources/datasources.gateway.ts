@@ -114,8 +114,6 @@ export class DataSourcesGateway {
                 }
             )
 
-            console.log('dataSources/data/updateById - updated, data', data)
-
             return {
                 success: true,
                 data: data,

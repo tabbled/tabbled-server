@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, MoreThan, Repository, QueryRunner } from "typeorm";
+import { DataSource, Repository, QueryRunner } from "typeorm";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { ConfigItem, ConfigRevision } from "./entities/config.entity";
-import { ConfigImportDto } from "./dto/request.dto";
+import { ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto } from "./dto/request.dto";
+import { Context } from "../entities/context";
+import { FlakeId } from "../flake-id";
+let flakeId = new FlakeId()
 
 @Injectable()
 export class ConfigService {
@@ -12,17 +15,178 @@ export class ConfigService {
                 private datasource: DataSource) {
     }
 
-    async getMany(filter?: any): Promise<any> {
-        console.log(filter)
-        return await this.dataItemsRepository.findBy({
-        })
+    async getMany(params: GetManyDto): Promise<any> {
+        const rep = this.datasource.getRepository(ConfigItem);
+        let query = rep.createQueryBuilder('cfg')
+            .where(`alias = :alias AND deleted_at IS NULL`, { alias: params.alias})
+
+        let items = await query.getMany()
+        let data = items.map(i => i.data)
+
+        return {
+            items: data,
+            count: await query.getCount()
+        }
     }
 
-    async getManyAfterRevision(rev: number): Promise<any> {
-        return await this.dataItemsRepository.findBy({
-            rev: MoreThan(rev)
-        })
+    async getByIdRaw(params: GetByIdDto) : Promise<ConfigItem | undefined> {
+        const rep = this.datasource.getRepository(ConfigItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(` id = :id AND alias = :alias`, { alias: params.alias, id: params.id})
+
+        return await query.getOne()
     }
+
+    async getByKeyRaw(params: GetByKeyDto) : Promise<ConfigItem | undefined> {
+        const rep = this.datasource.getRepository(ConfigItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(`(data ->> 'alias')::varchar = :key AND alias = :alias`, { alias: params.alias, key: params.key})
+
+        return await query.getOne()
+    }
+
+    async insert(alias: string, id: string, value: any, context: Context) {
+        let queryRunner = this.datasource.createQueryRunner()
+        await queryRunner.startTransaction()
+        let item = null
+        try {
+            item  = await this.insertData(alias, value, queryRunner, context, id)
+            await queryRunner.commitTransaction();
+
+        } catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e
+        } finally {
+            await queryRunner.release();
+        }
+        return item
+    }
+
+    async updateById(alias: string, id: string, value: object, context: Context): Promise<ConfigItem> {
+        let item = await this.getByIdRaw({alias: alias, id: id});
+
+        if (!item) {
+            throw new Error(`Config item for "${alias}" by id "${id}" not found`)
+        }
+
+        let queryRunner = this.datasource.createQueryRunner()
+        await queryRunner.startTransaction()
+
+        item.data = value
+        try {
+            await this.updateData(alias, id, item, queryRunner, context)
+            await queryRunner.commitTransaction();
+        } catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e
+        } finally {
+            await queryRunner.release();
+        }
+
+        return item
+    }
+
+    async insertData(alias: string, data: any, queryRunner: QueryRunner, context: Context, id?:string): Promise<ConfigItem> {
+        let item = {
+            id: id || String(flakeId.generateId()),
+            rev: "",
+            version: 1,
+            alias: alias,
+            data: data,
+            createdBy: context.userId,
+            updatedAt: new Date(),
+            updatedBy: context.userId,
+            createdAt: new Date(),
+            deletedBy: null,
+            deletedAt: null
+        }
+        item.rev = await this.createRevision(queryRunner, item, context)
+
+        await queryRunner.manager.createQueryBuilder()
+            .insert()
+            .into(ConfigItem)
+            .values(item)
+            .execute()
+
+        return item
+    }
+
+    async updateData(alias: string, id: string, item: ConfigItem, queryRunner: QueryRunner, context: Context): Promise<void> {
+        item.rev = await this.createRevision(queryRunner, item, context)
+        item.updatedAt = new Date()
+        item.updatedBy = context.userId
+
+        await queryRunner.manager.createQueryBuilder()
+            .update(ConfigItem)
+            .set(item)
+            .andWhere({
+                id: item.id
+            })
+            .execute()
+    }
+
+    async removeById(alias: string, id: string, context: Context, soft = true): Promise<ConfigItem> {
+        console.log("Remove config by id", id, "soft", soft)
+        let item = await this.getByIdRaw({
+            alias: alias,
+            id: id
+        });
+
+        if (!item) {
+            throw new Error(`Item by id "${id}" not found`)
+        }
+
+        let queryRunner = this.datasource.createQueryRunner()
+        await queryRunner.startTransaction()
+
+        item.deletedAt = new Date()
+        item.deletedBy = context.userId
+        item.rev = await this.createRevision(queryRunner, item, context)
+
+        try {
+            await queryRunner.manager.createQueryBuilder()
+                .insert()
+                .update(ConfigItem)
+                .set(item)
+                .andWhere({
+                    id: item.id
+                })
+                .execute()
+            await queryRunner.commitTransaction();
+        } catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e
+        } finally {
+            await queryRunner.release();
+        }
+
+        return item
+    }
+
+    private async createRevision(queryRunner: QueryRunner, item: ConfigItem, context: Context) {
+        try {
+            let revRes = await queryRunner.manager.insert(ConfigRevision, {
+                alias: item.alias,
+                version: item.version,
+                data: item.data,
+                createdBy: context.userId
+            })
+            return revRes.identifiers[0].id;
+        } catch (e) {
+            throw e;
+        }
+    }
+
+
+
+
+    // async getManyAfterRevision(rev: number): Promise<any> {
+    //     return await this.dataItemsRepository.findBy({
+    //         rev: MoreThan(rev)
+    //     })
+    // }
 
     async getLastRevisionNumber(): Promise<number> {
         const rep = this.datasource.getRepository(ConfigItem);
@@ -34,13 +198,13 @@ export class ConfigService {
         return val.rev
     }
 
-    async update(item: ConfigItem, userId: number) {
+    async update(item: ConfigItem, context: Context) {
 
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
         try {
-            await this.updateItem(queryRunner, item, userId)
+            await this.updateItem(queryRunner, item, context.userId)
             await queryRunner.commitTransaction();
         } catch (e) {
             console.error(e)
