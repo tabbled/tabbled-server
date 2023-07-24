@@ -45,13 +45,10 @@ export class PicturesService {
     async createThumbsAndUploadAllToS3(file) {
         console.log('createThumbsAndUploadAllToS3', file)
 
-        //console.log(path)
-
         let filename = tokgen.generate() + extname(file.originalname);
 
         let metaData:ItemBucketMetadata = {
-            'Content-Type': file.mimetype,
-            'Origin-filename': file.originalname
+            'Content-Type': file.mimetype
         }
 
         try {
