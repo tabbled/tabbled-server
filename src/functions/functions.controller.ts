@@ -1,11 +1,13 @@
 import { Controller, Post, Body, Param, HttpException, HttpStatus } from "@nestjs/common";
 import { FunctionsService } from './functions.service';
+import { ApiOperation } from "@nestjs/swagger";
 
 @Controller('functions')
 export class FunctionsController {
     constructor(private readonly functionsService: FunctionsService) {}
 
     @Post(':alias')
+    @ApiOperation({ summary: 'Call a function by alias' })
     async call(
         @Param('alias') alias: string,
         @Body() body: any

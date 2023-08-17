@@ -11,12 +11,14 @@ import {
 import { PicturesService } from './pictures.service';
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
+import { ApiOperation } from "@nestjs/swagger";
 
 @Controller('pictures')
 export class PicturesController {
     constructor(private readonly picturesService: PicturesService) {}
 
     @Post('')
+    @ApiOperation({ summary: 'Upload a picture to the S3 bucket' })
     @UseInterceptors(FileInterceptor('file'))
     async upload(@UploadedFile() file: Express.Multer.File) {
         console.log('/pictures upload')
@@ -35,6 +37,7 @@ export class PicturesController {
     }
 
     @Get(':name')
+    @ApiOperation({ summary: 'Get a picture by name' })
     async getOne(
         @Param('name') name: string,
         @Res() response:Response

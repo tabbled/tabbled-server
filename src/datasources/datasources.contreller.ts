@@ -14,13 +14,16 @@ import { DataSourcesService } from './datasources.service';
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Request } from 'express';
 import { ImportDataDto } from "./dto/datasource.dto";
+import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @Controller('datasources')
 export class DataSourcesController {
     constructor(private readonly dsService: DataSourcesService) {}
 
     @Get(':alias/data')
+    @ApiOperation({ summary: 'Get data from datasource by alias' })
     async getDataMany(
         @Param('alias') alias: string,
         @Req() req: Request
@@ -49,6 +52,7 @@ export class DataSourcesController {
     }
 
     @Post(':alias/data/import')
+    @ApiOperation({ summary: 'Import data to datasource by alias' })
     @HttpCode(200)
     async call(
         @Param('alias') alias: string,
