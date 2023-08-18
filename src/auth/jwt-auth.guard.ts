@@ -5,14 +5,18 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { jwtConstants } from "./constants";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
+    constructor(private userService: UsersService) {
+        super();
+    }
     private jwtService: JwtService = new JwtService({
         secret: jwtConstants.secret,
     })
     
-    canActivate(context: ExecutionContext): boolean | Promise<boolean> {
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
         const client = context.getArgByIndex(0);
 
@@ -37,6 +41,20 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             // append user and poll to socket
             request.username = payload.username;
             request.userId = Number(payload.userId);
+
+            let user = await this.userService.getSettings(payload.userId)
+
+            if (!user)
+                return false
+
+            // If accountId doesn't provide that find first account for the user
+            if (!accountId) {
+                if (!user.accounts.length)
+                    return false
+
+                accountId = user.accounts[0].id
+            }
+
             request.accountId = accountId
 
             return true;
@@ -48,6 +66,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
             throw e
         }
+
+
     }
 
     private extractTokenFromHeader(request: Request): string | undefined {
@@ -56,5 +76,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
         const [type, token] = request.headers['authorization']?.split(' ') ?? [];
         return type === 'Bearer' ? token : undefined;
+    }
+
+    async validate(username: string, password:string): Promise<any> {
+        console.log('validate', username, password)
+        const user = await this.userService.findOne(username);
+        if (!user) {
+            throw new UnauthorizedException();
+        }
+        return user;
     }
 }

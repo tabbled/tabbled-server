@@ -1,3 +1,5 @@
+import { ApiProperty } from "@nestjs/swagger";
+
 export declare type StandardQueryOperator = '<' | '<=' | '==' | '!=' | '>' | '>=' | 'exists' | '!exists' | 'between' | '!between' | 'like' | '!like' | 'matches' | '!matches' | 'in' | '!in' | 'has' | '!has' | 'contains' | '!contains';
 export interface FilterItemInterface {
     key: string,
@@ -32,14 +34,24 @@ export class GetDataByIdDto {
 
 export class InsertDataDto {
     alias: string
+
+    @ApiProperty()
     id?: string
+
+    @ApiProperty()
     value: any
+
+    @ApiProperty()
     parentId?: string
 }
 
 export class UpdateDataByIdDto {
     alias: string
+
+    @ApiProperty()
     id: string
+
+    @ApiProperty()
     value: any
 }
 
@@ -68,13 +80,22 @@ export class ImportDataOptionsDto {
 }
 
 export class GetManyResponse {
+    @ApiProperty()
     items: GetManyItemResponse[]
+
+    @ApiProperty()
     count: number
 }
 
 export class GetManyItemResponse {
+    @ApiProperty()
     id: string
+
+    @ApiProperty()
     parentId?: string
+
+    @ApiProperty()
     hasChildren?: number
+
     [name: string]: any | never
 }
