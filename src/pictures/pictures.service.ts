@@ -3,6 +3,7 @@ import {extname} from "path";
 const TokenGenerator = require('uuid-token-generator');
 const tokgen = new TokenGenerator(256, TokenGenerator.BASE62);
 import { Client, ItemBucketMetadata } from "minio";
+const sharp = require('sharp');
 
 @Injectable()
 export class PicturesService {
@@ -47,13 +48,21 @@ export class PicturesService {
 
         let filename = tokgen.generate() + extname(file.originalname);
 
+        let thumb = await sharp(file.buffer)
+            .resize(100)
+            .toBuffer()
+
+        let big = await sharp(file.buffer)
+            .resize(500)
+            .toBuffer()
+
         let metaData:ItemBucketMetadata = {
             'Content-Type': file.mimetype
         }
 
         try {
-            let d = await this.minioClient.putObject(process.env.S3_BUCKET, filename, file.buffer, metaData)
-            console.log(d)
+            await this.minioClient.putObject(process.env.S3_BUCKET, filename, thumb, metaData)
+            await this.minioClient.putObject(process.env.S3_BUCKET, 'big/' + filename, big, metaData)
         } catch (e) {
             throw e
         }
