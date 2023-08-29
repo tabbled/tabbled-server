@@ -58,7 +58,7 @@ export class DataSourcesService {
             .getOne()
 
         if (!item)
-            throw new Error(`DataSource '${alias}' not found`)
+            throw `DataSource '${alias}' not found`
 
         return item.data
     }
@@ -67,7 +67,7 @@ export class DataSourcesService {
         let config = await this.getConfig(alias)
 
         if (config.source !== 'internal') {
-            throw new Error('DataSource is not an internal source')
+            throw 'DataSource is not an internal source'
         }
 
         return new InternalDataSource(config, this.datasource, this.functionsService, context)

@@ -17,6 +17,7 @@ import { DataSourcesModule } from "./datasources/datasources.module";
 import { BullModule } from '@nestjs/bull';
 import { SettingsModule } from "./settings/settings.module";
 import { ReportsModule } from './reports/reports.module';
+import { AggregationsModule } from './aggregations/aggregations.module';
 
 @Module({
     imports: [
@@ -55,7 +56,8 @@ import { ReportsModule } from './reports/reports.module';
         PicturesModule,
         DataSourcesModule,
         SettingsModule,
-        ReportsModule
+        ReportsModule,
+        AggregationsModule
     ],
   controllers: [AppController],
   providers: [AppService, UsersModule],

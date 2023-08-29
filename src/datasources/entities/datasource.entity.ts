@@ -43,7 +43,10 @@ export interface DataSourceConfigInterface {
     isTree?: boolean,
     source?: DataSourceSource,
     script?: string,
-    eventHandlers: EventHandlerInterface[]
+    eventHandlers: EventHandlerInterface[],
+    keyFields: string[] // for aggregation datasource
+    aggFields: string[] // for aggregation datasource
+    isAggregator: boolean
 }
 
 export class InternalDataSource {
@@ -473,6 +476,28 @@ export class InternalDataSource {
         item.data[field] = value
 
         return await this.updateById(id, item.data, invokeEvents)
+    }
+
+    async getByKeys(keys: any) {
+        const rep = this.dataSource.getRepository(DataItem);
+        let query = rep.createQueryBuilder()
+            .select()
+            .where(`alias = '${this.config.alias}'`)
+
+        let fields = Object.keys(keys)
+        for(const i in fields) {
+            if (this.config.keyFields.includes(fields[i])) {
+                query.andWhere(`(data ->> '${fields[i]}') = '${keys[fields[i]]}'`)
+            } else {
+                throw `Key ${fields[i]} is not a field of keys. Keys are ${this.config.keyFields}`
+            }
+        }
+
+        if (this.context.accountId) {
+            query.andWhere(`account_id = ${this.context.accountId}`)
+        }
+
+        return await query.getOne()
     }
 
     async getNested(data: DataItem[]) {

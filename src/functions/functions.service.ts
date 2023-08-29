@@ -8,6 +8,7 @@ import { FlakeId } from '../flake-id'
 import { Context } from "../entities/context";
 import * as process from "process";
 import { DataSourcesService } from "../datasources/datasources.service";
+import { AggregationsService } from "../aggregations/aggregations.service";
 
 @Injectable()
 export class FunctionsService {
@@ -17,7 +18,8 @@ export class FunctionsService {
                 @InjectRepository(ConfigItem)
                 private configRepository: Repository<ConfigItem>,
                 @InjectDataSource('default')
-                private datasource: DataSource) {
+                private datasource: DataSource,
+                private aggService: AggregationsService) {
     }
 
     async getByAlias(alias: string) {
@@ -63,6 +65,7 @@ export class FunctionsService {
         const dsHelper = new DataSourcesScriptHelper(this.dataSourcesService, context)
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
+        const agg = new AggregationScriptHelper(this.aggService, context, vmConsole)
 
 
         const vm = new NodeVM({
@@ -74,7 +77,8 @@ export class FunctionsService {
                 ctx: context,
                 dataSources: dsHelper,
                 request: requestHelper,
-                utilities: utils
+                utilities: utils,
+                aggregations: agg
             }
         });
 
@@ -88,8 +92,11 @@ export class FunctionsService {
             res = await vm.run(script)
         } catch (e) {
             console.error(`Run script error: `, e)
+            if (!!vmConsole) vmConsole(e.toString())
+
             throw `${e.toString()}`
         } finally {
+            if (!!vmConsole) vmConsole('Function finished')
             process.off('uncaughtException', uncaughtException)
         }
 
@@ -116,13 +123,33 @@ class DataSourcesScriptHelper {
     constructor(dataSourcesService: DataSourcesService, context: Context) {
         this.dataSourcesService = dataSourcesService
         this.context = context
-        console.log('DataSourcesScriptHelper context', this.context)
     }
     readonly dataSourcesService: DataSourcesService
     readonly context: Context
 
     async getByAlias(alias: string) {
         return await this.dataSourcesService.getByAlias(alias, this.context)
+    }
+}
+
+class AggregationScriptHelper {
+    constructor(aggService: AggregationsService, context: Context, vmConsole?: (...args) => void ) {
+        this.aggService = aggService
+        this.context = context
+        this.vmConsole = vmConsole
+
+    }
+    readonly aggService: AggregationsService
+    readonly context: Context
+    readonly vmConsole: (...args) => void
+
+    async conduct(params: any) {
+        try{
+            return await this.aggService.conduct(params, this.context)
+        } catch (e) {
+            console.error(e)
+            if (this.vmConsole) this.vmConsole(e.toString())
+        }
     }
 }
 
@@ -160,7 +187,6 @@ class RequestScriptHelper {
             console.error(e)
             throw new Error('Error while execution script: ' + e.toString())
         }
-
     }
 }
 
