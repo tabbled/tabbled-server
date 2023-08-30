@@ -18,3 +18,15 @@ export class ApplyDto {
     records: ApplyRecordDto[]
     issuerId: string
 }
+
+export class MovementDto {
+    issuerId: string
+    dataSource: string
+    source: ApplyEntityDto
+    target: ApplyEntityDto
+}
+
+export class HistoryDto extends ApplyEntityDto {
+    issuerId: string
+    dataSource: string
+}

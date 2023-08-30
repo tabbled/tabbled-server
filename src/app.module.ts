@@ -18,6 +18,7 @@ import { BullModule } from '@nestjs/bull';
 import { SettingsModule } from "./settings/settings.module";
 import { ReportsModule } from './reports/reports.module';
 import { AggregationsModule } from './aggregations/aggregations.module';
+import { AggregationHistory, AggregationMovement } from "./aggregations/entities/aggregation.entity";
 
 @Module({
     imports: [
@@ -41,7 +42,9 @@ import { AggregationsModule } from './aggregations/aggregations.module';
                 Revision,
                 DataItem,
                 ConfigItem,
-                ConfigRevision
+                ConfigRevision,
+                AggregationHistory,
+                AggregationMovement
             ]
         }),
         BullModule.forRoot({
