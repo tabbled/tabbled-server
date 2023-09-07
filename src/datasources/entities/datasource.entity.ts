@@ -326,7 +326,10 @@ export class InternalDataSource {
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        item.data = value
+        item.data = await this.addLinkTitle(value)
+
+
+
         try {
             await this.updateData(id, item, queryRunner)
             await queryRunner.commitTransaction();
@@ -536,6 +539,42 @@ export class InternalDataSource {
         }
 
         return await query.getMany()
+    }
+
+    async addLinkTitle(value) : Promise<any> {
+        let newValue = Object.assign({}, value)
+        let keys = Object.keys(value)
+
+        for(let i in keys) {
+            const key = keys[i]
+            let field = this.fieldByAlias.get(key)
+
+            if (field && field.type === 'link') {
+
+                if (!newValue[key]) {
+                    newValue[`__${key}_title`] = ''
+                    continue
+                }
+
+                const displayProp = field.displayProp ? field.displayProp : 'name'
+
+                const rep = this.dataSource.getRepository(DataItem);
+
+                if (field.isMultiple) {
+
+                } else {
+                    let query = await rep.createQueryBuilder()
+                        .where(`alias = '${field.datasource}' AND id = ${newValue[key]}`)
+                        .select()
+
+                    let item = await query.getOne()
+
+                    newValue[`__${key}_title`] = item.data[displayProp]
+                }
+            }
+        }
+
+        return newValue
     }
 
     async import(data: any[], options: ImportDataOptionsDto) {
