@@ -40,7 +40,7 @@ export class UsersService {
             })
         })
 
-        let res = {
+        return {
             id: user.id,
             username: user.username,
             firstname: user.firstname,
@@ -48,9 +48,6 @@ export class UsersService {
             settings: user.settings,
             accounts: accounts
         }
-        console.log(res)
-
-        return res
     }
 
     async accountSettings(userId): Promise<any | undefined> {

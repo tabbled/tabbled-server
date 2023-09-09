@@ -77,13 +77,4 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         const [type, token] = request.headers['authorization']?.split(' ') ?? [];
         return type === 'Bearer' ? token : undefined;
     }
-
-    async validate(username: string, password:string): Promise<any> {
-        console.log('validate', username, password)
-        const user = await this.userService.findOne(username);
-        if (!user) {
-            throw new UnauthorizedException();
-        }
-        return user;
-    }
 }

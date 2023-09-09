@@ -83,14 +83,14 @@ export class InternalDataSource {
         const sal = 'ds'
         let query = this.getManyQueryBuilder(options, sal)
 
-        let select = [`${sal}."id"`, `${sal}."parent_id" as "parentId"`]
+        let select = [`${sal}."id"`, `${sal}."parent_id" AS "parentId"`]
         let fields = options.fields && options.fields.length ? options.fields : [...this.fieldByAlias.keys()]
 
         for(let i in fields) {
             let f = this.fieldByAlias.get(fields[i])
             if (!f) continue
 
-            select.push(`(${sal}.data ->> '${f.alias}')${this.castTypeToSql(f.alias)} as ${f.alias}`)
+            select.push(`(${sal}.data ->> '${f.alias}')${this.castTypeToSql(f.alias)} AS "${f.alias}"`)
 
             if (f.type === 'link') {
                 const displayProp = f.displayProp ? f.displayProp : 'name'
@@ -100,10 +100,10 @@ export class InternalDataSource {
                         `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`)
                     select.push(`(link_${f.alias}.data ->> '${displayProp}') as __${f.alias}_title`)
                 } else {
-                    select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' ${displayProp}
+                    select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' AS "${displayProp}"
                               FROM data_items  
                               WHERE alias = '${f.datasource}' 
-                              and id::text in (SELECT * FROM jsonb_array_elements_text((${sal}.data ->> '${f.alias}')::jsonb))) t
+                              AND id::text in (SELECT * FROM jsonb_array_elements_text((${sal}.data ->> '${f.alias}')::jsonb))) t
                              ) __${f.alias}_entities`)
                 }
             }
@@ -118,8 +118,6 @@ export class InternalDataSource {
         console.log('getMany.query', query.getQuery())
 
         let data = await query.getRawMany()
-
-        console.log(data.length)
 
         // Includes additional ids to response
         if (options.include) {

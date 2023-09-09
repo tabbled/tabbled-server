@@ -19,8 +19,6 @@ export class AuthGateway {
             const user: User = await this.usersService.findOne({ username: login.username })
             const userSettings = await this.usersService.getSettings(user.id)
 
-            console.log(userSettings)
-
             return {
                 success: true,
                 jwt: jwt,

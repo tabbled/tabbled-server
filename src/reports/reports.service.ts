@@ -37,7 +37,7 @@ export class ReportsService {
             throw `Error while running the preparing script - ${e.toString()}`
         }
 
-        console.log(data)
+        //console.log(data)
 
 
         return await jsreport.render({
