@@ -566,8 +566,8 @@ export class InternalDataSource {
                         .select()
 
                     let item = await query.getOne()
-
-                    newValue[`__${key}_title`] = item.data[displayProp]
+                    if (item)
+                        newValue[`__${key}_title`] = item.data[displayProp]
                 }
             }
         }
