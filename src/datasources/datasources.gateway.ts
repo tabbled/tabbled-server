@@ -10,6 +10,7 @@ import {
 import { Socket } from "socket.io";
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import * as Sentry from "@sentry/node";
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
@@ -20,7 +21,11 @@ export class DataSourcesGateway {
     async getDataMany(@MessageBody() body: GetDataManyDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/getMany, alias: ', body.alias)
 
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/getMany'})
+
+        let span = transaction.startChild({ name: 'getDataMany'})
         try {
+
             let data = await this.dataSourcesService.getDataMany(
                 body.alias,
                 body.options,
@@ -30,23 +35,30 @@ export class DataSourcesGateway {
                 }
             )
 
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
             console.error(e)
+            span.setStatus('error')
             return {
                 success: false,
                 error_message: e.toString()
             }
+        }
+        finally {
+            span.finish()
+            transaction.finish()
         }
     }
 
     @SubscribeMessage('dataSources/data/getById')
     async getDataById(@MessageBody() body: GetDataByIdDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/getById, alias: ', body.alias, "id: ", body.id)
-
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/getById'})
+        let span = transaction.startChild({ name: 'getById'})
         try {
             let data = await this.dataSourcesService.getDataById(
                 body.alias,
@@ -56,17 +68,21 @@ export class DataSourcesGateway {
                     userId: client['userId']
                 }
             )
-
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
             console.error(e)
+            span.setStatus('error')
             return {
                 success: false,
                 error_message: e.toString()
             }
+        } finally {
+            span.finish()
+            transaction.finish()
         }
     }
 
@@ -74,6 +90,8 @@ export class DataSourcesGateway {
     async insertData(@MessageBody() body: InsertDataDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/insert, alias: ', body.alias, "id: ", body)
 
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/insert'})
+        let span = transaction.startChild({ name: 'insertData'})
         try {
             let data = await this.dataSourcesService.insertData(
                 body.alias,
@@ -86,16 +104,22 @@ export class DataSourcesGateway {
                 body.parentId
             )
 
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
             console.error(e)
+            span.setStatus('error')
             return {
                 success: false,
                 error_message: e.toString()
             }
+        }
+        finally {
+            span.finish()
+            transaction.finish()
         }
     }
 
@@ -103,6 +127,8 @@ export class DataSourcesGateway {
     async updateById(@MessageBody() body: UpdateDataByIdDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/updateById, alias: ', body.alias, "id: ", body.id)
 
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/updateById'})
+        let span = transaction.startChild({ name: 'insertData'})
         try {
             let data = await this.dataSourcesService.updateDataById(
                 body.alias,
@@ -113,17 +139,21 @@ export class DataSourcesGateway {
                     userId: client['userId']
                 }
             )
-
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
             console.error(e)
+            span.setStatus('error')
             return {
                 success: false,
                 error_message: e.toString()
             }
+        } finally {
+            span.finish()
+            transaction.finish()
         }
     }
 
@@ -131,6 +161,8 @@ export class DataSourcesGateway {
     async removeById(@MessageBody() body: RemoveDataByIdDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/removeById, alias: ', body.alias, "id: ", body.id)
 
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/removeById'})
+        let span = transaction.startChild({ name: 'removeById'})
         try {
             let data = await this.dataSourcesService.removeDataById(
                 body.alias,
@@ -142,16 +174,21 @@ export class DataSourcesGateway {
                 body.soft
             )
 
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
+            span.setStatus('error')
             console.error(e)
             return {
                 success: false,
                 error_message: e.toString()
             }
+        } finally {
+            span.finish()
+            transaction.finish()
         }
     }
 
@@ -159,6 +196,8 @@ export class DataSourcesGateway {
     async setValue(@MessageBody() body: SetValueDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/setValue, alias: ', body.alias, "field: ", body.field, "id: ", body.id)
 
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/removeById'})
+        let span = transaction.startChild({ name: 'removeById'})
         try {
             let data = await this.dataSourcesService.setValue(
                 body.alias,
@@ -171,16 +210,21 @@ export class DataSourcesGateway {
                 }
             )
 
+            span.setStatus('ok')
             return {
                 success: true,
                 data: data,
             }
         } catch (e) {
+            span.setStatus('error')
             console.error(e)
             return {
                 success: false,
                 error_message: e.toString()
             }
+        } finally {
+            span.finish()
+            transaction.finish()
         }
     }
 }

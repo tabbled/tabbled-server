@@ -268,6 +268,8 @@ export class InternalDataSource {
             query.andWhere(`account_id = ${this.context.accountId}`)
         }
 
+        console.log('getByIdRaw', query.getQuery())
+
         return await query.getOne()
     }
 
@@ -316,10 +318,11 @@ export class InternalDataSource {
     async updateById(id: string, value: object, invokeEvents = true): Promise<DataItem> {
         console.log(`DataSource "${this.config.alias}" updateById`, id, 'invokeEvents: ', invokeEvents)
         let item = await this.getByIdRaw(id);
-        let origin = Object.assign({}, item)
+        console.log(item)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
+        let origin = Object.assign({}, item)
 
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
@@ -348,6 +351,9 @@ export class InternalDataSource {
     }
 
     async setDefaultValues(data: any):Promise<any> {
+        if (typeof data !== 'object') {
+            data = {}
+        }
         let item = {
             id: data.id || flakeId.generateId().toString()
         }
@@ -402,6 +408,7 @@ export class InternalDataSource {
             deletedBy: null,
             deletedAt: null
         }
+
         item.rev = await this.createRevision(queryRunner, item)
 
         await queryRunner.manager.createQueryBuilder()
@@ -621,6 +628,7 @@ export class InternalDataSource {
     }
 
     private async createRevision(queryRunner: QueryRunner, item: DataItem) {
+        console.log('createRevision', item)
         try {
             let revRes = await queryRunner.manager.insert(Revision, {
                 alias: item.alias,
