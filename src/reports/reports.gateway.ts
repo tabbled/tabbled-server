@@ -4,6 +4,7 @@ import { RenderByIdDto } from "./dto/report.dto";
 import { Server } from "socket.io";
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import * as Sentry from "@sentry/node";
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
@@ -16,20 +17,32 @@ export class ReportsGateway {
     async create(@MessageBody() renderByIdDto: RenderByIdDto) {
 
         console.log('reports/renderById', renderByIdDto)
+
+        let transaction = Sentry.startTransaction({ name:  'Message: reports/renderById', op: 'websocket.event'})
+        let span = transaction.startChild({ name: 'renderById', op: 'reports.renderById'})
+
         let vmConsole = this.vmConsole.bind(this)
         try {
             let re = await this.reportsService.renderById(renderByIdDto, vmConsole);
 
+            span.setStatus('ok')
+            transaction.setStatus('ok')
             return {
                 success: true,
                 data: await re.body()
             }
         } catch (e) {
             console.error(e)
+            span.setStatus('error')
+            transaction.setStatus('error')
+            Sentry.captureException(e);
             return {
                 success: false,
                 error_message: e.toString()
             }
+        } finally {
+            span.finish()
+            transaction.finish()
         }
 
     }

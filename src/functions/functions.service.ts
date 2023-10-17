@@ -9,6 +9,7 @@ import { Context } from "../entities/context";
 import * as process from "process";
 import { DataSourcesService } from "../datasources/datasources.service";
 import { AggregationsService } from "../aggregations/aggregations.service";
+import * as Sentry from "@sentry/node";
 
 @Injectable()
 export class FunctionsService {
@@ -94,7 +95,9 @@ export class FunctionsService {
             console.error(`Run script error: `, e)
             if (!!vmConsole) vmConsole(e.toString())
 
+            Sentry.captureException(e);
             throw `${e.toString()}`
+
         } finally {
             if (!!vmConsole) vmConsole('Function finished')
             process.off('uncaughtException', uncaughtException)
@@ -105,6 +108,7 @@ export class FunctionsService {
             console.error('Asynchronous error caught.', err.toString());
             if (!!vmConsole) {
                 vmConsole(err.toString())
+                Sentry.captureException(err);
             }
         }
 
@@ -148,6 +152,7 @@ class AggregationScriptHelper {
             return await this.aggService.conduct(params, this.context)
         } catch (e) {
             console.error(e)
+            Sentry.captureException(e);
             if (this.vmConsole) this.vmConsole(e.toString())
         }
     }
@@ -185,6 +190,7 @@ class RequestScriptHelper {
             return res.data
         } catch (e) {
             console.error(e)
+            Sentry.captureException(e);
             throw new Error('Error while execution script: ' + e.toString())
         }
     }
