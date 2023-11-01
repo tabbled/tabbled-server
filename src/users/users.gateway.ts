@@ -6,11 +6,12 @@ import {
     ConnectedSocket
 } from '@nestjs/websockets';
 import { UsersService } from './users.service';
-import { InviteUserDto } from "./dto/invite-user.dto";
+import { InsertUserDto, InviteUserDto } from "./dto/invite-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Server, Socket } from 'socket.io';
+import { GetDataManyOptionsDto } from "../datasources/dto/datasource.dto";
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
@@ -38,28 +39,112 @@ export class UsersGateway {
         }
     }
     
-    @SubscribeMessage('users/inviteUser')
-    create(@MessageBody() invite: InviteUserDto, @ConnectedSocket() client: Socket) {
+    @SubscribeMessage('users/invite')
+    invite(@MessageBody() invite: InviteUserDto, @ConnectedSocket() client: Socket) {
         return this.usersService.invite(invite)
     }
 
-    @SubscribeMessage('users/getUsers')
-    getAll(@MessageBody() account_id: number, @ConnectedSocket() client: Socket) {
-        return this.usersService.findMany(account_id);
+    @SubscribeMessage('users/getMany')
+    async getMany(@MessageBody() options: GetDataManyOptionsDto, @ConnectedSocket() client: Socket) {
+        console.log('users/getMany')
+        try {
+            let data = await this.usersService.getMany(options, {
+                accountId: client['accountId'],
+                userId: client['userId']
+            });
+
+            return {
+                success: true,
+                data: data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
     }
 
-    @SubscribeMessage('users/findOneUser')
-    findOne(@MessageBody() where: any) {
-        return this.usersService.findOne(where);
+    @SubscribeMessage('users/getById')
+    async getById(@MessageBody() body: any, @ConnectedSocket() client: Socket) {
+        console.log('users/getById', body)
+
+        try {
+            let data = await this.usersService.getSettingsForAccount(Number(body.id), client['accountId']);
+            return {
+                success: true,
+                data: data
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
     }
 
-    @SubscribeMessage('users/updateUser')
-    update(@MessageBody() updateUserDto: UpdateUserDto, id: number) {
-        return this.usersService.update(id, updateUserDto);
+    @SubscribeMessage('users/insert')
+    async insert(@MessageBody() body: InsertUserDto, @ConnectedSocket() client: Socket) {
+        console.log('users/insert')
+
+        try {
+            let id = await this.usersService.insert(body.value, client['accountId'])
+
+            return {
+                success: true,
+                data: {
+                    id: id
+                }
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
     }
 
-    @SubscribeMessage('users/removeUser')
-    remove(@MessageBody() id: number) {
-        return this.usersService.remove(id);
+    @SubscribeMessage('users/updateById')
+    async update(@MessageBody() body: UpdateUserDto, @ConnectedSocket() client: Socket) {
+        console.log('users/updateById')
+
+        try {
+            let id = await this.usersService.update(body.id, body.value, client['accountId'])
+
+            return {
+                success: true,
+                data: {
+                    id: id
+                }
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
+    @SubscribeMessage('users/removeById')
+    async remove(@MessageBody() body: any, @ConnectedSocket() client: Socket) {
+        console.log('users/removeById')
+
+        try {
+            let id = await this.usersService.remove(body.id, client['accountId'])
+
+            return {
+                success: true,
+                data: {
+                    id: id
+                }
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
     }
 }

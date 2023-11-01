@@ -7,3 +7,7 @@ export class InviteUserDto {
     @ApiProperty()
     account_id: string;
 }
+
+export class InsertUserDto {
+    value: any
+}

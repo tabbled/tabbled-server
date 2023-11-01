@@ -192,4 +192,41 @@ export class ConfigGateway {
             }
         }
     }
+
+    @SubscribeMessage('config/params/get')
+    async getParam(@MessageBody() body, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/params/get', body.id)
+        try {
+            let value = await this.configService.getParameter(body.id, client['accountId'])
+
+            return {
+                success: true,
+                data: value
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
+    @SubscribeMessage('config/params/set')
+    async setParam(@MessageBody() body, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/params/set', body.id)
+        try {
+            await this.configService.setParameter(body.id, body.value, client['accountId'])
+
+            return {
+                success: true
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
 }

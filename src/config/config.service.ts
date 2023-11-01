@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository, QueryRunner } from "typeorm";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { ConfigItem, ConfigRevision } from "./entities/config.entity";
+import { ConfigItem, ConfigParam, ConfigRevision } from "./entities/config.entity";
 import { ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto } from "./dto/request.dto";
 import { Context } from "../entities/context";
 import { FlakeId } from "../flake-id";
@@ -312,5 +312,27 @@ export class ConfigService {
         }
 
         await queryRunner.release();
+    }
+
+    async setParameter(id: string, value: any, accountId: number) {
+        const rep = this.datasource.getRepository(ConfigParam);
+        await rep.createQueryBuilder()
+            .insert()
+            .into(ConfigParam)
+            .values({ accountId: accountId, id: id, value: value})
+            .orUpdate( ['value'], ['id', 'account_id'])
+            .execute()
+    }
+
+    async getParameter(id: string, accountId: number) {
+        console.log(id, accountId)
+        const rep = this.datasource.getRepository(ConfigParam);
+        let item = await rep
+            .createQueryBuilder()
+            .select()
+            .whereInIds({id: id, accountId: accountId})
+            .getOne();
+
+        return item ? item.value : null
     }
 }

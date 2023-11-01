@@ -63,3 +63,22 @@ export class ConfigRevision {
     @Column({ type: "int", name: "created_by" } )
     public createdBy: number;
 }
+
+@Entity({name: "config_params"})
+export class ConfigParam {
+
+    @PrimaryColumn({ type: "varchar"})
+    id: string;
+
+    @PrimaryColumn({ type: "int", name: "account_id"})
+    accountId: number;
+
+    @Column({ type: "jsonb"})
+    value: object;
+
+    @CreateDateColumn({ type: "timestamp", name: "created_at", default: () => "CURRENT_TIMESTAMP(3)" })
+    public createdAt: Date;
+
+    @UpdateDateColumn({ type: "timestamp", name: "updated_at", default: () => "CURRENT_TIMESTAMP(3)" })
+    public updatedAt: Date;
+}

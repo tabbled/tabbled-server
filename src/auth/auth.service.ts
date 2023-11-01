@@ -24,6 +24,11 @@ export class AuthService {
             throw Error(`User and password pair not found`)
         }
 
+        const settings = await this.userService.getSettings(user.id)
+        let active = settings.accounts.find(item => item.active === true)
+        if (!active)
+            throw Error(`User doesn't have account`)
+
         const payload = { username: login.username, userId: user.id };
         return this.jwtService.sign(payload, {
             expiresIn: '7 days'
