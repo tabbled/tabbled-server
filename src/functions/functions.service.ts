@@ -10,6 +10,7 @@ import * as process from "process";
 import { DataSourcesService } from "../datasources/datasources.service";
 import { AggregationsService } from "../aggregations/aggregations.service";
 import * as Sentry from "@sentry/node";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class FunctionsService {
@@ -20,6 +21,7 @@ export class FunctionsService {
                 private configRepository: Repository<ConfigItem>,
                 @InjectDataSource('default')
                 private datasource: DataSource,
+                private userService: UsersService,
                 private aggService: AggregationsService) {
     }
 
@@ -67,6 +69,7 @@ export class FunctionsService {
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
         const agg = new AggregationScriptHelper(this.aggService, context, vmConsole)
+        const usr = new UserScriptHelper(this.userService, context)
 
 
         const vm = new NodeVM({
@@ -79,7 +82,8 @@ export class FunctionsService {
                 dataSources: dsHelper,
                 request: requestHelper,
                 utilities: utils,
-                aggregations: agg
+                aggregations: agg,
+                users: usr
             }
         });
 
@@ -157,6 +161,23 @@ class AggregationScriptHelper {
         }
     }
 }
+
+class UserScriptHelper {
+    constructor(userService: UsersService, context: Context) {
+        this.context = context
+        this.userService = userService
+
+
+    }
+
+    readonly context: Context
+    readonly userService: UsersService
+
+    async getBy(where: any) {
+        return this.userService.findOne(where)
+    }
+}
+
 
 class RequestScriptHelper {
     constructor() {
