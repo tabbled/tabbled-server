@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ConfigItem } from "../entities/config.entity";
 
 export class ConfigDto {
     alias: string
@@ -26,14 +25,15 @@ export class ConfigImportDto {
     version: number
 
     @ApiProperty()
-    function?: ConfigItem[]
+    rev: string
 
     @ApiProperty()
-    page?: ConfigItem[]
+    entire: boolean
 
     @ApiProperty()
-    datasource?: ConfigItem[]
+    entities: string[]
 
     @ApiProperty()
-    menu?: ConfigItem[]
+    config: any
+
 }

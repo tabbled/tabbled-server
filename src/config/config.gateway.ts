@@ -176,7 +176,7 @@ export class ConfigGateway {
 
     @SubscribeMessage('config/import')
     async import(@MessageBody() config: ConfigImportDto, @ConnectedSocket() client: Socket) : Promise<any> {
-
+        console.log('config/import, version: ', config.version, "rev: " + config.rev)
         try {
             await this.configService.import(config, client['userId'])
             this.server.emit(`config/changed`, {})
@@ -193,11 +193,30 @@ export class ConfigGateway {
         }
     }
 
+    @SubscribeMessage('config/export')
+    async export(@MessageBody() params: any, @ConnectedSocket() client: Socket) : Promise<any> {
+
+        try {
+            let config = await this.configService.export()
+
+            return {
+                success: true,
+                data: config
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
+
     @SubscribeMessage('config/params/get')
     async getParam(@MessageBody() body, @ConnectedSocket() client: Socket) : Promise<any> {
         console.log('config/params/get', body.id)
         try {
-            let value = await this.configService.getParameter(body.id, client['accountId'])
+            let value = await this.configService.getParameter(body.id)
 
             return {
                 success: true,
@@ -216,7 +235,7 @@ export class ConfigGateway {
     async setParam(@MessageBody() body, @ConnectedSocket() client: Socket) : Promise<any> {
         console.log('config/params/set', body.id)
         try {
-            await this.configService.setParameter(body.id, body.value, client['accountId'])
+            await this.configService.setParameter(body.id, body.value)
 
             return {
                 success: true

@@ -179,15 +179,6 @@ export class ConfigService {
         }
     }
 
-
-
-
-    // async getManyAfterRevision(rev: number): Promise<any> {
-    //     return await this.dataItemsRepository.findBy({
-    //         rev: MoreThan(rev)
-    //     })
-    // }
-
     async getLastRevisionNumber(): Promise<number> {
         const rep = this.datasource.getRepository(ConfigItem);
         const val = await rep
@@ -286,22 +277,55 @@ export class ConfigService {
         }
     }
 
-    async import(config: ConfigImportDto, userId: number) {
+    async import(options: ConfigImportDto, userId: number) {
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
         try {
-            if (config.datasource)
-                await this.updateBatch(queryRunner, config.datasource, userId)
+            if (options.entire) {
+                await queryRunner.manager.createQueryBuilder()
+                    .delete()
+                    .from(ConfigItem)
+                    .execute()
 
-            if (config.page)
-                await this.updateBatch(queryRunner, config.page, userId)
+                if (options.config.datasource)
+                    await this.updateBatch(queryRunner, options.config.datasource, userId)
 
-            if (config.menu)
-                await this.updateBatch(queryRunner, config.menu, userId)
+                if (options.config.page)
+                    await this.updateBatch(queryRunner, options.config.page, userId)
 
-            if (config.function)
-                await this.updateBatch(queryRunner, config.function, userId)
+                if (options.config.function)
+                    await this.updateBatch(queryRunner, options.config.function, userId)
+
+                if (options.config.report)
+                    await this.updateBatch(queryRunner, options.config.report, userId)
+
+                if (options.config.params) {
+                    for(const i in options.config.params) {
+                        const p = options.config.params[i]
+                        await this.setParameter(p.id, p.value)
+                    }
+                }
+            } else {
+                for(const i in options.entities) {
+                    const path = options.entities[i].split('.')
+
+                    if (path && path[0] === 'params' && options.config.params) {
+                        for(const i in options.config.params) {
+                            const p = options.config.params[i]
+                            if (p.id !== '__config_version')
+                                await this.setParameter(p.id, p.value)
+                        }
+                    }
+
+                    if (path.length <= 1)
+                        continue
+
+                    const entity = options.config[path[0]].find(item => item.data.alias === path[1])
+                    if (entity)
+                        await this.updateItem(queryRunner, entity, userId)
+                }
+            }
 
             await queryRunner.commitTransaction();
         } catch (e) {
@@ -314,25 +338,63 @@ export class ConfigService {
         await queryRunner.release();
     }
 
-    async setParameter(id: string, value: any, accountId: number) {
+    async export() {
+        let data = {
+            version: await this.getConfigVersion(),
+            rev: await this.getLastRevisionNumber(),
+            function: [],
+            page: [],
+            datasource: [],
+            report: [],
+            params: await this.getParametersMany()
+        }
+
+        const rep = this.datasource.getRepository(ConfigItem);
+        let query = rep.createQueryBuilder()
+            .where(`deleted_at IS NULL`, {})
+
+        let items = await query.getMany()
+
+        for(let i in items) {
+            let item = items[i]
+            if (data[item.alias])
+                data[item.alias].push(item)
+        }
+
+        return data
+    }
+
+    async setParameter(id: string, value: any) {
         const rep = this.datasource.getRepository(ConfigParam);
         await rep.createQueryBuilder()
             .insert()
             .into(ConfigParam)
-            .values({ accountId: accountId, id: id, value: value})
-            .orUpdate( ['value'], ['id', 'account_id'])
+            .values({ id: id, value: value})
+            .orUpdate( ['value'], ['id'])
             .execute()
     }
 
-    async getParameter(id: string, accountId: number) {
-        console.log(id, accountId)
+    async getParameter(id: string) {
         const rep = this.datasource.getRepository(ConfigParam);
         let item = await rep
             .createQueryBuilder()
             .select()
-            .whereInIds({id: id, accountId: accountId})
+            .whereInIds({id: id})
             .getOne();
 
         return item ? item.value : null
+    }
+
+    async getParametersMany() {
+        const repParams = this.datasource.getRepository(ConfigParam);
+        return await repParams
+            .createQueryBuilder()
+            .select()
+            .getMany()
+    }
+
+    async getConfigVersion() : Promise<number> {
+        let version = await this.getParameter('__config_version')
+        return version ?  Number(version) : 1
     }
 }

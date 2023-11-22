@@ -70,9 +70,6 @@ export class ConfigParam {
     @PrimaryColumn({ type: "varchar"})
     id: string;
 
-    @PrimaryColumn({ type: "int", name: "account_id"})
-    accountId: number;
-
     @Column({ type: "jsonb"})
     value: object;
 
