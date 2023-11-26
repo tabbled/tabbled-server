@@ -6,7 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { AccountUsers, User } from "./users/entities/user.entity";
-import { AccountsModule } from './accounts/accounts.module';
 import { Account } from "./accounts/entities/account.entity"
 import { DataItem, Revision } from "./datasources/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module';
@@ -54,7 +53,6 @@ import { AggregationHistory, AggregationMovement } from "./aggregations/entities
                 port: Number(process.env.REDIS_PORT),
             }
         }),
-        AccountsModule,
         ConfigItemModule,
         FunctionsModule,
         PicturesModule,
@@ -63,8 +61,9 @@ import { AggregationHistory, AggregationMovement } from "./aggregations/entities
         ReportsModule,
         AggregationsModule
     ],
-  controllers: [AppController],
-  providers: [AppService, UsersModule],
+    controllers: [AppController],
+    providers: [AppService],
+    exports: []
 
 })
 export class AppModule {}

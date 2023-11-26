@@ -5,6 +5,7 @@ import { DataItem, Revision } from "./dataitem.entity";
 import { FlakeId } from '../../flake-id'
 import { FieldConfigInterface } from "../../entities/field";
 import { FunctionsService } from "../../functions/functions.service";
+import { RoomsService } from "../../rooms/rooms.service";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -50,11 +51,16 @@ export interface DataSourceConfigInterface {
 }
 
 export class InternalDataSource {
-    constructor(config: DataSourceConfigInterface, dataSource: DataSource, functionsService: FunctionsService, context: Context) {
+    constructor(config: DataSourceConfigInterface,
+                dataSource: DataSource,
+                functionsService: FunctionsService,
+                context: Context,
+                rooms: RoomsService) {
         this.config = config
         this.dataSource = dataSource
         this.context = context
         this.functionsService = functionsService
+        this.rooms = rooms
 
         for(const i in config.fields) {
             let field = config.fields[i]
@@ -65,6 +71,7 @@ export class InternalDataSource {
     readonly dataSource: DataSource
     readonly context: Context
     readonly functionsService: FunctionsService
+    readonly rooms: RoomsService
 
     private fieldByAlias: Map<string,FieldConfigInterface> = new Map()
 
@@ -312,6 +319,19 @@ export class InternalDataSource {
             });
         }
 
+
+        this.rooms.emitUpdates({
+            type: 'data',
+            context: this.context,
+            entity: {
+                alias: this.config.alias,
+                id: item?.id,
+                data: item?.data,
+                rev: item?.rev
+            },
+            action: 'add'
+        })
+
         return item
     }
 
@@ -347,6 +367,19 @@ export class InternalDataSource {
                 new: item
             });
         }
+
+        this.rooms.emitUpdates({
+            type: 'data',
+            context: this.context,
+            entity: {
+                alias: this.config.alias,
+                id: item?.id,
+                data: item.data,
+                rev: item?.rev
+            },
+            action: 'update'
+        })
+
         return item
     }
 
@@ -473,6 +506,17 @@ export class InternalDataSource {
             });
         }
 
+        this.rooms.emitUpdates({
+            type: 'data',
+            context: this.context,
+            entity: {
+                alias: this.config.alias,
+                id: item?.id,
+                rev: item?.rev
+            },
+            action: 'remove'
+        })
+
         return item
     }
 
@@ -506,27 +550,6 @@ export class InternalDataSource {
         }
 
         return await query.getOne()
-    }
-
-    async getNested(data: DataItem[]) {
-
-        return getChildren(null)
-
-        function getChildren(parentId) {
-            let f = data.filter((value => parentId ? value.parentId === parentId : !value.parentId ))
-
-            let nested = []
-
-            for(let i in f) {
-                const item = f[i]
-                let nestedItem:any = Object.assign({}, item)
-
-                nestedItem.children = getChildren(item.id)
-                nested.push(nestedItem)
-            }
-
-            return nested
-        }
     }
 
     async getChildren(parentId: string) {

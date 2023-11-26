@@ -4,8 +4,8 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
-import { jwtConstants } from "./constants";
 import { UsersService } from "../users/users.service";
+import { jwtConstants } from "./constants";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -13,9 +13,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         super();
     }
     private jwtService: JwtService = new JwtService({
-        secret: jwtConstants.secret,
+        secret: jwtConstants.secret
     })
-    
+
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
         const client = context.getArgByIndex(0);
@@ -66,8 +66,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
             throw e
         }
-
-
     }
 
     private extractTokenFromHeader(request: Request): string | undefined {

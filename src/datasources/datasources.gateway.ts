@@ -1,4 +1,9 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket } from "@nestjs/websockets";
+import {
+    WebSocketGateway,
+    SubscribeMessage,
+    MessageBody,
+    ConnectedSocket,
+} from "@nestjs/websockets";
 import { DataSourcesService } from './datasources.service';
 import {
     GetDataByIdDto,
@@ -14,7 +19,8 @@ import * as Sentry from "@sentry/node";
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
-export class DataSourcesGateway {
+export class DataSourcesGateway
+{
     constructor(private readonly dataSourcesService: DataSourcesService) {}
 
     @SubscribeMessage('dataSources/data/getMany')
@@ -57,6 +63,24 @@ export class DataSourcesGateway {
         }
     }
 
+    //getCurrentRevisionId
+    @SubscribeMessage('dataSources/data/getCurrentRevisionId')
+    async getCurrentRevisionId(@MessageBody() body: any, @ConnectedSocket() client: Socket) {
+        console.log('dataSources/data/getCurrentRevisionId, alias: ', body.alias, "id: ", body.id)
+        try {
+            let data = await this.dataSourcesService.getCurrentRevisionId(body.alias, body.id)
+            return {
+                success: true,
+                data: data,
+            }
+        } catch (e) {
+            console.error(e)
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        }
+    }
     @SubscribeMessage('dataSources/data/getById')
     async getDataById(@MessageBody() body: GetDataByIdDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/getById, alias: ', body.alias, "id: ", body.id)

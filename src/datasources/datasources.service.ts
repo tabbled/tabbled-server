@@ -6,6 +6,8 @@ import { ConfigItem } from "../config/entities/config.entity";
 import { DataSourceConfigInterface, InternalDataSource } from "./entities/datasource.entity";
 import { Context } from "../entities/context";
 import { FunctionsService } from "../functions/functions.service";
+import { RoomsService } from "../rooms/rooms.service";
+import { DataItem } from "./entities/dataitem.entity";
 
 @Injectable()
 export class DataSourcesService {
@@ -13,6 +15,8 @@ export class DataSourcesService {
                 private functionsService: FunctionsService,
                  @InjectDataSource('default')
                 private datasource: DataSource,
+                @Inject(RoomsService)
+                private rooms: RoomsService
                ) {
     }
 
@@ -70,6 +74,16 @@ export class DataSourcesService {
             throw 'DataSource is not an internal source'
         }
 
-        return new InternalDataSource(config, this.datasource, this.functionsService, context)
+        return new InternalDataSource(config, this.datasource, this.functionsService, context, this.rooms)
+    }
+
+    async getCurrentRevisionId(alias, id) {
+        let rep = this.datasource.getRepository(DataItem)
+        let query = rep.createQueryBuilder()
+        let item = await query.select()
+            .andWhere('id = :id', {id: id})
+            .getOne()
+
+        return item.rev;
     }
 }

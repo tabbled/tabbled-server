@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common"
 import { SettingsGateway } from "./settings.gateway";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule } from "@nestjs/config";
 
 @Module({
     controllers: [],
-    providers: [SettingsGateway, ConfigService],
+    providers: [SettingsGateway],
     imports: [ConfigModule],
     exports: []
 })

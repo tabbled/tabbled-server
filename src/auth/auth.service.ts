@@ -34,4 +34,16 @@ export class AuthService {
             expiresIn: '7 days'
         })
     }
+
+    async getUserForSocket(client) {
+        if (!client)
+            return null
+
+        let token = client.handshake?.auth.jwt
+        if (!token)
+            return null
+
+        const payload = this.jwtService.verify(token);
+        return Number(payload.userId);
+    }
 }
