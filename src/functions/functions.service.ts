@@ -160,6 +160,16 @@ class AggregationScriptHelper {
             if (this.vmConsole) this.vmConsole(e.toString())
         }
     }
+
+    async reverse(params: any) {
+        try{
+            return await this.aggService.reverse(params, this.context)
+        } catch (e) {
+            console.error(e)
+            Sentry.captureException(e);
+            if (this.vmConsole) this.vmConsole(e.toString())
+        }
+    }
 }
 
 class UserScriptHelper {

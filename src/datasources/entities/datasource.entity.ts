@@ -539,7 +539,12 @@ export class InternalDataSource {
         let fields = Object.keys(keys)
         for(const i in fields) {
             if (this.config.keyFields.includes(fields[i])) {
-                query.andWhere(`(data ->> '${fields[i]}') = '${keys[fields[i]]}'`)
+                if (!keys[fields[i]]) {
+                    query.andWhere(`(data ->> '${fields[i]}') IS NULL`)
+                } else {
+                    query.andWhere(`(data ->> '${fields[i]}') = '${keys[fields[i]]}'`)
+                }
+
             } else {
                 throw `Key ${fields[i]} is not a field of keys. Keys are ${this.config.keyFields}`
             }

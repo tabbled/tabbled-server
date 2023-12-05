@@ -13,7 +13,12 @@ export class ApplyRecordDto {
     target: ApplyEntityDto
 }
 
-export class ApplyDto {
+export class ReverseDto {
+    dataSource: string
+    issuerId: string
+}
+
+export class ConductDto {
     dataSource: string
     records: ApplyRecordDto[]
     issuerId: string
