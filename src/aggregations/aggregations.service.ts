@@ -31,7 +31,7 @@ export class AggregationsService {
                 const rec = params.records[i]
 
                 if (rec.target && rec.target.keys) {
-                    let target = await ds.getByKeys(rec.target.keys)
+                    let target = await ds.getByKeysRaw(rec.target.keys)
                     if (!target) {
                         target = await makeNew(rec.target)
                         await ds.insertData(target, queryRunner)
@@ -51,7 +51,7 @@ export class AggregationsService {
                 }
 
                 if (rec.source && rec.source.keys) {
-                    let source = await ds.getByKeys(rec.source.keys)
+                    let source = await ds.getByKeysRaw(rec.source.keys)
                     if (!source) {
                         source = await makeNew(rec.source)
                         await ds.insertData(source, queryRunner)
@@ -120,7 +120,7 @@ export class AggregationsService {
             let hist = await this.getHistoryByIssuerId(queryRunner, params.dataSource, params.issuerId)
 
             for(const i in hist) {
-                let source = await ds.getByKeys(hist[i].keys)
+                let source = await ds.getByKeysRaw(hist[i].keys)
                 let h = hist[i]
 
 

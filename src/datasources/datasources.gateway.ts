@@ -6,7 +6,7 @@ import {
 } from "@nestjs/websockets";
 import { DataSourcesService } from './datasources.service';
 import {
-    GetDataByIdDto,
+    GetDataByIdDto, GetDataByKeysDto,
     GetDataManyDto,
     InsertDataDto,
     RemoveDataByIdDto, SetValueDto,
@@ -81,6 +81,7 @@ export class DataSourcesGateway
             }
         }
     }
+
     @SubscribeMessage('dataSources/data/getById')
     async getDataById(@MessageBody() body: GetDataByIdDto, @ConnectedSocket() client: Socket) {
         console.log('dataSources/data/getById, alias: ', body.alias, "id: ", body.id)
@@ -90,6 +91,41 @@ export class DataSourcesGateway
             let data = await this.dataSourcesService.getDataById(
                 body.alias,
                 body.id,
+                {
+                    accountId: client['accountId'],
+                    userId: client['userId']
+                }
+            )
+            span.setStatus('ok')
+            transaction.setStatus('ok')
+            return {
+                success: true,
+                data: data,
+            }
+        } catch (e) {
+            console.error(e)
+            span.setStatus('error')
+            transaction.setStatus('error')
+            Sentry.captureException(e);
+            return {
+                success: false,
+                error_message: e.toString()
+            }
+        } finally {
+            span.finish()
+            transaction.finish()
+        }
+    }
+
+    @SubscribeMessage('dataSources/data/getByKeys')
+    async getDataByKeys(@MessageBody() body: GetDataByKeysDto, @ConnectedSocket() client: Socket) {
+        console.log('dataSources/data/getByKeys, alias: ', body.alias, "keys: ", body.keys)
+        let transaction = Sentry.startTransaction({ name:  'Message: dataSources/data/getByKeys', op: 'websocket.event'})
+        let span = transaction.startChild({ name: 'getByKeys', op: 'datasource.getByKeys'})
+        try {
+            let data = await this.dataSourcesService.getDataByKeys(
+                body.alias,
+                body.keys,
                 {
                     accountId: client['accountId'],
                     userId: client['userId']

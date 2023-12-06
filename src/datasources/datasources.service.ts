@@ -30,6 +30,11 @@ export class DataSourcesService {
         return await ds.getById(id)
     }
 
+    async getDataByKeys(alias: string, keys: any, context: Context) : Promise<any> {
+        let ds = await this.getByAlias(alias, context)
+        return await ds.getByKeys(keys)
+    }
+
     async insertData(alias: string, value: any, context: Context, id?: string, parentId?: string) {
         let ds = await this.getByAlias(alias, context)
         return await ds.insert(value, id, parentId)

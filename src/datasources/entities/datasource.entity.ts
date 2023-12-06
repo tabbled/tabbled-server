@@ -531,6 +531,10 @@ export class InternalDataSource {
     }
 
     async getByKeys(keys: any) {
+        return (await this.getByKeysRaw(keys)).data
+    }
+
+    async getByKeysRaw(keys: any) {
         const rep = this.dataSource.getRepository(DataItem);
         let query = rep.createQueryBuilder()
             .select()

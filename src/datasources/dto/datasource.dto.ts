@@ -32,6 +32,11 @@ export class GetDataByIdDto {
     id: string
 }
 
+export class GetDataByKeysDto {
+    alias: string
+    keys: any
+}
+
 export class InsertDataDto {
     alias: string
 
