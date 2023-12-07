@@ -531,7 +531,8 @@ export class InternalDataSource {
     }
 
     async getByKeys(keys: any) {
-        return (await this.getByKeysRaw(keys)).data
+        let rw = await this.getByKeysRaw(keys)
+        return rw ? rw.data : null
     }
 
     async getByKeysRaw(keys: any) {
