@@ -13,20 +13,12 @@ Look for more information on [this page](https://github.com/tabbled/tabbled)
 * Renders jsreport templates
 * Communicates with web app through WebSecket
 
-## Roadmap
-
-- [x] Auth
-- [ ] Users, accounts, permissions
-- [ ] Store entity configurations
-- [ ] Store entity data
-- [ ] Sync data with app
-- [ ] Store and rendering report template
-- [ ] Store js models
-
 ## Dependencies
 
 * PostgreSQL
-* [jsreport](https://jsreport.net/)
+* [jsReport](https://jsreport.net/)
+* Minio
+* Redis
 
 ## Installation
 

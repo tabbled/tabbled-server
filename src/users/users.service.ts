@@ -91,8 +91,8 @@ export class UsersService {
             firstname: user.firstname,
             lastname: user.lastname,
             settings: user.settings,
-            permissions: acc.au_permissions,
-            active: acc.au_active
+            permissions: acc.permissions,
+            active: acc.active
         }
     }
 
@@ -100,13 +100,15 @@ export class UsersService {
         let user = await this.getById(userId);
         let settings = await this.accountSettings(userId);
 
+        console.log(settings)
+
         let accounts = [];
         settings.forEach(item => {
             accounts.push({
                 id: item.acc_id,
                 name: item.acc_name,
-                permissions: item.au_permissions,
-                active: item.au_active,
+                permissions: item.permissions,
+                active: item.active,
             })
         })
 
@@ -123,6 +125,7 @@ export class UsersService {
     async accountSettings(userId): Promise<any | undefined> {
         return this.usersRepository
             .createQueryBuilder('users')
+            .select('*')
             .leftJoinAndSelect("account_users", "au", "au.user_id = users.id")
             .leftJoinAndSelect('accounts', 'acc', 'au.account_id = acc.id')
             .where('au.user_id = :id', {id: userId})

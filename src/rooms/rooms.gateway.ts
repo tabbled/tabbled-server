@@ -12,6 +12,8 @@ import { Server, Socket } from 'socket.io';
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AuthService } from "../auth/auth.service";
+import * as process from "process";
+import axios from 'axios';
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
@@ -30,7 +32,19 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect, O
 
     async handleConnection(client:Socket) {
         //const payload = this.jwtService.verify(token);
-        console.log('handleConnection', await this.auth.getUserForSocket(client))
+        let userId = await this.auth.getUserForSocket(client)
+        console.log('handleConnection, userId: ', userId)
+
+        if (process.env.CLOUD_ACCOUNT && userId) {
+            try {
+                await axios.post(`${process.env.ENTRYPOINT_URL}/accounts/last-seen`, {
+                    account: process.env.CLOUD_ACCOUNT
+                })
+            } catch (e) {
+                console.error(e)
+            }
+        }
+
         //await client.join('updates')
     }
 
