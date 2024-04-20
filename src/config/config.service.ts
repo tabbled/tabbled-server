@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, Repository, QueryRunner } from "typeorm";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { ConfigItem, ConfigParam, ConfigRevision } from "./entities/config.entity";
-import { ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto } from "./dto/request.dto";
+import { ConfigExportDto, ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto } from "./dto/request.dto";
 import { Context } from "../entities/context";
 import { FlakeId } from "../flake-id";
+import { DataItem } from "../datasources/entities/dataitem.entity";
 let flakeId = new FlakeId()
 
 @Injectable()
@@ -207,12 +208,16 @@ export class ConfigService {
         await queryRunner.release();
     }
 
-    async updateItem(queryRunner: QueryRunner, item: ConfigItem, userId: number) {
+    async updateItem(queryRunner: QueryRunner, item: ConfigItem, userId: number, skipIfExists: boolean = false) {
         const current_item = await queryRunner.manager.findOne(ConfigItem, {
             where: {
                 id: item.id
             }
         })
+
+        if (current_item && skipIfExists)
+            return
+
         let newRevision = null
 
         try {
@@ -250,7 +255,6 @@ export class ConfigService {
                 .execute()
         } else {
             await queryRunner.manager.createQueryBuilder()
-                .insert()
                 .update(ConfigItem)
                 .set({
                     rev: newRevision,
@@ -271,94 +275,174 @@ export class ConfigService {
         return newRevision
     }
 
-    async updateBatch(queryRunner: QueryRunner, items: ConfigItem[], userId: number) {
+    async updateBatch(queryRunner: QueryRunner, items: ConfigItem[], userId: number, skipIfExists: boolean = false) {
         for(let i in items) {
-            await this.updateItem(queryRunner, items[i], userId)
+            await this.updateItem(queryRunner, items[i], userId, skipIfExists)
         }
     }
 
     async import(options: ConfigImportDto, userId: number) {
+        console.log(options)
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
-        try {
-            if (options.entire) {
-                await queryRunner.manager.createQueryBuilder()
-                    .delete()
-                    .from(ConfigItem)
-                    .execute()
 
-                if (options.config.datasource)
-                    await this.updateBatch(queryRunner, options.config.datasource, userId)
+            try {
+                await this.importConfig(options, queryRunner, userId)
 
-                if (options.config.page)
-                    await this.updateBatch(queryRunner, options.config.page, userId)
+                await this.importData(options, queryRunner, userId)
 
-                if (options.config.function)
-                    await this.updateBatch(queryRunner, options.config.function, userId)
-
-                if (options.config.report)
-                    await this.updateBatch(queryRunner, options.config.report, userId)
-
-                if (options.config.params) {
-                    for(const i in options.config.params) {
-                        const p = options.config.params[i]
-                        await this.setParameter(p.id, p.value)
-                    }
-                }
-            } else {
-                for(const i in options.entities) {
-                    const path = options.entities[i].split('.')
-
-                    if (path && path[0] === 'params' && options.config.params) {
-                        for(const i in options.config.params) {
-                            const p = options.config.params[i]
-                            if (p.id !== '__config_version')
-                                await this.setParameter(p.id, p.value)
-                        }
-                    }
-
-                    if (path.length <= 1)
-                        continue
-
-                    const entity = options.config[path[0]].find(item => item.data.alias === path[1])
-                    if (entity)
-                        await this.updateItem(queryRunner, entity, userId)
-                }
+                await queryRunner.commitTransaction();
+            } catch (e) {
+                console.error(e)
+                await queryRunner.rollbackTransaction();
+                await queryRunner.release();
+                throw e;
             }
 
-            await queryRunner.commitTransaction();
-        } catch (e) {
-            console.error(e)
-            await queryRunner.rollbackTransaction();
-            await queryRunner.release();
-            throw e;
-        }
 
         await queryRunner.release();
     }
 
-    async export() {
-        let data = {
-            version: await this.getConfigVersion(),
-            rev: await this.getLastRevisionNumber(),
-            function: [],
-            page: [],
-            datasource: [],
-            report: [],
-            params: await this.getParametersMany()
+    async importConfig(options: ConfigImportDto, queryRunner: QueryRunner, userId) {
+        if (!options.importConfig)
+            return;
+
+        const skip = options.configConflictAction === 'skip'
+
+        if (options.clearConfig) {
+            await queryRunner.manager.createQueryBuilder()
+                .delete()
+                .from(ConfigItem)
+                .execute()
         }
 
-        const rep = this.datasource.getRepository(ConfigItem);
-        let query = rep.createQueryBuilder()
-            .where(`deleted_at IS NULL`, {})
+        if (!options.partially) {
 
-        let items = await query.getMany()
+            if (options.configuration.datasource)
+                await this.updateBatch(queryRunner, options.configuration.datasource, userId, skip)
 
-        for(let i in items) {
-            let item = items[i]
-            if (data[item.alias])
-                data[item.alias].push(item)
+            if (options.configuration.page)
+                await this.updateBatch(queryRunner, options.configuration.page, userId, skip)
+
+            if (options.configuration.function)
+                await this.updateBatch(queryRunner, options.configuration.function, userId, skip)
+
+            if (options.configuration.report)
+                await this.updateBatch(queryRunner, options.configuration.report, userId, skip)
+
+            if (options.configuration.params) {
+                for(const i in options.configuration.params) {
+                    const p = options.configuration.params[i]
+                    await this.setParameter(p.id, p.value)
+                }
+            }
+        } else {
+            for (const i in options.selected) {
+                const path = options.selected[i].split('.')
+
+                if (path && path[0] === 'params' && options.configuration.params) {
+                    for (const i in options.configuration.params) {
+                        const p = options.configuration.params[i]
+                        if (p.id !== '__config_version')
+                            await this.setParameter(p.id, p.value)
+                    }
+                }
+
+                if (path.length <= 1)
+                    continue
+
+                const entity = options.configuration[path[0]].find(item => item.data.alias === path[1])
+                if (entity)
+                    await this.updateItem(queryRunner, entity, userId, skip)
+            }
+        }
+    }
+
+    async importData(options: ConfigImportDto, queryRunner: QueryRunner, userId) {
+        if (!options.importData)
+            return;
+
+        if (options.clearData) {
+            await queryRunner.manager.createQueryBuilder()
+                .delete()
+                .from(DataItem)
+                .execute()
+        }
+
+        for(let i in options.data) {
+            let item = options.data[i]
+            item['accountId'] = 1
+            item["createdBy"] = userId
+            item["updatedBy"] = userId
+
+            await this.importDataItem(item, queryRunner, userId, options.dataConflictAction === 'skip')
+        }
+    }
+
+    async importDataItem(item, queryRunner: QueryRunner, userId, skipIfExists) {
+        const current_item = await queryRunner.manager.findOne(DataItem, {
+            where: {
+                id: item.id
+            }
+        })
+
+        if (current_item && skipIfExists)
+            return
+
+        if (!current_item) {
+            await queryRunner.manager.createQueryBuilder()
+                .insert()
+                .into(DataItem)
+                .values(item)
+                .execute()
+        } else {
+            await queryRunner.manager.createQueryBuilder()
+                .update(DataItem)
+                .set({
+                    data: item.data
+                }).andWhere({
+                    id: item.id
+                })
+                .execute()
+        }
+
+    }
+
+    async export(params? : ConfigExportDto) {
+        let data = {
+            configuration: {
+                function: [],
+                page: [],
+                datasource: [],
+                report: [],
+                params: await this.getParametersMany()
+            },
+            version: await this.getConfigVersion(),
+            rev: await this.getLastRevisionNumber(),
+            data: []
+        }
+
+        if (params && params.config) {
+            const rep = this.datasource.getRepository(ConfigItem);
+            let query = rep.createQueryBuilder()
+                .where(`deleted_at IS NULL`)
+
+            let items = await query.getMany()
+
+            for(let i in items) {
+                let item = items[i]
+                if (data.configuration[item.alias])
+                    data.configuration[item.alias].push(item)
+            }
+        }
+
+        if (params && params.data) {
+            const rep = this.datasource.getRepository(DataItem);
+            let query = await rep.createQueryBuilder()
+                .where(`deleted_at IS NULL`)
+
+            data.data = await query.getMany()
         }
 
         return data

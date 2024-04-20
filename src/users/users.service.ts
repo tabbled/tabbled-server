@@ -100,8 +100,6 @@ export class UsersService {
         let user = await this.getById(userId);
         let settings = await this.accountSettings(userId);
 
-        console.log(settings)
-
         let accounts = [];
         settings.forEach(item => {
             accounts.push({

@@ -5,11 +5,11 @@ import {
     WebSocketGateway,
     WebSocketServer
 } from "@nestjs/websockets";
-import { ConfigService } from './config.service';
+import { ConfigService } from "./config.service";
 import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Server, Socket } from "socket.io";
-import { ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto, UpsertDto } from "./dto/request.dto";
+import { ConfigExportDto, ConfigImportDto, GetByIdDto, GetByKeyDto, GetManyDto, UpsertDto } from "./dto/request.dto";
 import { RemoveDataByIdDto } from "../datasources/dto/datasource.dto";
 
 @UseGuards(JwtAuthGuard)
@@ -200,10 +200,10 @@ export class ConfigGateway {
     }
 
     @SubscribeMessage('config/export')
-    async export(@MessageBody() params: any, @ConnectedSocket() client: Socket) : Promise<any> {
-
+    async export(@MessageBody() params: ConfigExportDto, @ConnectedSocket() client: Socket) : Promise<any> {
+        console.log('config/export', params)
         try {
-            let config = await this.configService.export()
+            let config = await this.configService.export(params)
 
             return {
                 success: true,

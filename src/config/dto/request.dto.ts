@@ -20,6 +20,8 @@ export class UpsertDto extends ConfigDto {
     value: any
 }
 
+export type ConflictAction = 'replace' | 'skip'
+
 export class ConfigImportDto {
     @ApiProperty()
     version: number
@@ -28,12 +30,41 @@ export class ConfigImportDto {
     rev: string
 
     @ApiProperty()
-    entire: boolean
+    importConfig: boolean
 
     @ApiProperty()
-    entities: string[]
+    importData: boolean
 
     @ApiProperty()
-    config: any
+    partially: boolean
 
+    @ApiProperty()
+    selected: string[]
+
+    @ApiProperty()
+    data: any[]
+
+    @ApiProperty()
+    configuration: any
+
+    @ApiProperty()
+    clearData: boolean
+
+    @ApiProperty()
+    clearConfig: boolean
+
+    @ApiProperty()
+    dataConflictAction: ConflictAction
+
+    @ApiProperty()
+    configConflictAction: ConflictAction
+
+}
+
+export class ConfigExportDto {
+    @ApiProperty()
+    data: boolean
+
+    @ApiProperty()
+    config: boolean
 }
