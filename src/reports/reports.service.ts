@@ -7,8 +7,6 @@ import { DataSource } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { FunctionsService } from "../functions/functions.service";
 
-
-
 @Injectable()
 export class ReportsService {
     constructor(private functionsService: FunctionsService,
@@ -37,17 +35,26 @@ export class ReportsService {
             throw `Error while running the preparing script - ${e.toString()}`
         }
 
-        //console.log(data)
-
-
-        return await jsreport.render({
+        let rep = {
             template: {
-                content: report.template,
+                recipe:  report.templateFormat === 'html' ? 'chrome-pdf': 'xlsx',
+                content: report.templateFormat === 'html' ? report.template : "{{{xlsxPrint}}}" ,
                 engine: 'handlebars',
-                recipe: 'chrome-pdf'
+                xlsx:  undefined
             },
             data: data
-        })
+        }
+
+        if (report.templateFormat === 'excel') {
+            rep.template.xlsx = {
+                templateAsset:  {
+                    content: report.templateExcel,
+                    encoding:"base64"
+                }
+            }
+        }
+
+        return await jsreport.render(rep)
     }
 
     async getById(id: string) :Promise<ReportDto | undefined> {

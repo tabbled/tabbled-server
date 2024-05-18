@@ -10,4 +10,7 @@ export class ReportDto {
     template: string
     script: string
     testContext: string
+    templateExcel?: string
+    templateFormat: 'html' | 'excel'
+
 }
