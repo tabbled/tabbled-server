@@ -84,6 +84,10 @@ export class InternalDataSource {
         return await this.getMany()
     }
 
+    getFieldByAlias(alias: string) {
+        return this.fieldByAlias.get(alias)
+    }
+
     async getMany(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
         console.log("DataSource.getMany", JSON.stringify(options))
 

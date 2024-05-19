@@ -48,7 +48,8 @@
     "rxjs": "^7.2.0",
     "sharp": "^0.32.5",
     "uuid-token-generator": "^1.0.0",
-    "vm2": "^3.9.17"
+    "vm2": "^3.9.17",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",

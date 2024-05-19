@@ -1,5 +1,5 @@
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "./dto/datasource.dto";
+import { ExportParams, GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "./dto/datasource.dto";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { ConfigItem } from "../config/entities/config.entity";
@@ -8,6 +8,7 @@ import { Context } from "../entities/context";
 import { FunctionsService } from "../functions/functions.service";
 import { RoomsService } from "../rooms/rooms.service";
 import { DataItem } from "./entities/dataitem.entity";
+import * as XLSX from "xlsx"
 
 @Injectable()
 export class DataSourcesService {
@@ -80,6 +81,78 @@ export class DataSourcesService {
         }
 
         return new InternalDataSource(config, this.datasource, this.functionsService, context, this.rooms)
+    }
+
+    async exportData(alias: string, params: ExportParams, context: Context) {
+        console.log('Export data from datasource: ' + alias, params )
+        let ds = await this.getByAlias(alias, context)
+        let data = await ds.getMany({
+            filter: params.filter,
+            fields: params.fields,
+            take: 10000
+        })
+
+        let sheet = []
+        let titles = []
+        for (let i in params.fields) {
+            let t = params.fields[i]
+            let field = ds.getFieldByAlias(t)
+
+            if (field)
+                titles.push(field.title)
+        }
+        sheet.push(titles)
+
+        for(let i in data.items) {
+            let item = data.items[i]
+            let row = []
+            for(let j in params.fields) {
+                let field = ds.getFieldByAlias(params.fields[j])
+                if (field) {
+                    if (field.type === 'link') {
+                        row.push(item[`__${field.alias}_title`])
+                    } else if (field.type === 'enum') {
+                        row.push(field.values.find((it) => it.key === item[field.alias]).title)
+                    } else {
+                        row.push(item[field.alias])
+                    }
+                }
+
+
+            }
+            sheet.push(row)
+        }
+
+        switch (params.format) {
+            case "xlsx": return arrayToExcel(sheet);
+            case "csv": return arrayToCsv(sheet);
+            case "json": return Buffer.from(JSON.stringify(data.items, null, 4)).toString('base64');
+            default: throw 'Unknown export format'
+        }
+
+        function arrayToExcel(data) {
+            let worksheet = XLSX.utils.aoa_to_sheet(data)
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'alias')
+
+            return XLSX.write(workbook, {
+                type: 'base64',
+                bookType: 'xlsx'
+            });
+        }
+
+        function arrayToCsv(data) {
+            let d = ''
+            data.forEach((row) => {
+                let strRow = ''
+                row.forEach(f => {
+                    strRow += f + '\t'
+                })
+                strRow += '\n'
+                d += strRow
+            })
+            return Buffer.from(d).toString('base64')
+        }
     }
 
     async getCurrentRevisionId(alias, id) {

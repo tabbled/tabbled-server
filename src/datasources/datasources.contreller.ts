@@ -13,7 +13,7 @@ import {
 import { DataSourcesService } from './datasources.service';
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Request } from 'express';
-import { GetManyResponse, ImportDataDto, InsertDataDto, UpdateDataByIdDto } from "./dto/datasource.dto";
+import { ExportParams, GetManyResponse, ImportDataDto, InsertDataDto, UpdateDataByIdDto } from "./dto/datasource.dto";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 
 @UseGuards(JwtAuthGuard)
@@ -119,6 +119,35 @@ export class DataSourcesController {
 
             return {
                 success: true
+            }
+        } catch (e) {
+            console.error(e)
+            throw new HttpException({
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                error: e.toString(),
+            }, HttpStatus.INTERNAL_SERVER_ERROR, {
+                cause: e.toString()
+            });
+        }
+    }
+
+    @Post(':alias/data/export')
+    @ApiOperation({ summary: 'Export data from datasource by alias' })
+    @HttpCode(200)
+    async exportData(
+        @Param('alias') alias: string,
+        @Body() body: ExportParams,
+        @Req() req: Request
+    ) {
+        try {
+            let file = await this.dsService.exportData(alias, body, {
+                accountId: req['accountId'],
+                userId: req['userId']
+            })
+
+            return {
+                success: true,
+                data: file
             }
         } catch (e) {
             console.error(e)

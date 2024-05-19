@@ -104,3 +104,9 @@ export class GetManyItemResponse {
 
     [name: string]: any | never
 }
+
+export class ExportParams {
+    format: 'xlsx' | 'csv' | 'json'
+    fields?: string[]
+    filter?: FilterItemInterface[]
+}
