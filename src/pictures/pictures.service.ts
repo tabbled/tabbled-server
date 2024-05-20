@@ -11,8 +11,8 @@ export class PicturesService {
     constructor() {
         this.minioClient  = new Client({
             endPoint: process.env.S3_ENDPOINT,
-            port: 9000,
-            useSSL: false,
+            port: Number(process.env.S3_PORT),
+            useSSL: !!Number(process.env.S3_USE_SSL),
             accessKey: process.env.S3_ACCESS_KEY,
             secretKey: process.env.S3_SECRET_ACCESS_KEY,
         });
