@@ -29,7 +29,11 @@ export class ReportsGateway {
             transaction.setStatus('ok')
             return {
                 success: true,
-                data: await re.body()
+                data: {
+                    contentType: re.contentType,
+                    report: await re.data.body(),
+                    filename: re.filename
+                }
             }
         } catch (e) {
             console.error(e)

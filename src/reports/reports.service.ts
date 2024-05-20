@@ -54,7 +54,20 @@ export class ReportsService {
             }
         }
 
-        return await jsreport.render(rep)
+        let contentType
+        let filename = report.title
+        switch (report.templateFormat) {
+            case 'excel': contentType = 'application/xlsx'; filename += '.xlsx'; break;
+            case 'html': contentType = 'application/pdf'; filename += '.pdf'; break;
+            default: contentType = 'application/blob'
+        }
+
+        let rendered = await jsreport.render(rep)
+        return {
+            data: rendered,
+            contentType: contentType,
+            filename: filename
+        }
     }
 
     async getById(id: string) :Promise<ReportDto | undefined> {
