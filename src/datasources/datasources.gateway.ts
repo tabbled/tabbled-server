@@ -167,7 +167,8 @@ export class DataSourcesGateway
                     userId: client['userId']
                 },
                 body.id,
-                body.parentId
+                body.parentId,
+                body.route
             )
 
             span.setStatus('ok')
@@ -206,7 +207,8 @@ export class DataSourcesGateway
                 {
                     accountId: client['accountId'],
                     userId: client['userId']
-                }
+                },
+                body.route
             )
             span.setStatus('ok')
             transaction.setStatus('ok')
@@ -243,7 +245,8 @@ export class DataSourcesGateway
                     accountId: client['accountId'],
                     userId: client['userId']
                 },
-                body.soft
+                body.soft,
+                body.route
             )
 
             span.setStatus('ok')
@@ -282,7 +285,8 @@ export class DataSourcesGateway
                 {
                     accountId: client['accountId'],
                     userId: client['userId']
-                }
+                },
+                body.route
             )
 
             span.setStatus('ok')

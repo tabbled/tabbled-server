@@ -115,7 +115,8 @@ export class DataSourcesController {
             await this.dsService.updateDataById(alias, body.id, body.value, {
                 accountId: req['accountId'],
                 userId: req['userId']
-            })
+            },
+                body.route)
 
             return {
                 success: true

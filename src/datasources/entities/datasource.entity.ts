@@ -294,16 +294,19 @@ export class InternalDataSource {
 
         if (this.config.isTree) {
             data.children = (await this.getChildren(id)).map(d => d.data)
+            data.hasChildren = !!data.children
         }
 
         return data
     }
 
-    async insert(value: any,  id?: string, parentId?: string, invokeEvents = true): Promise<DataItem> {
+    async insert(value: any,  id?: string, parentId?: string, invokeEvents = true, route?: string[]): Promise<DataItem> {
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
         let item = null
+
+
 
         try {
             item = await this.insertData(value, queryRunner, id, parentId)
@@ -323,23 +326,28 @@ export class InternalDataSource {
             });
         }
 
+        if (parentId && item) {
+            item.parent = await this.getById(parentId)
+        }
 
         this.rooms.emitUpdates({
             type: 'data',
+            action: 'add',
             context: this.context,
             entity: {
                 alias: this.config.alias,
                 id: item?.id,
                 data: item?.data,
-                rev: item?.rev
+                rev: item?.rev,
             },
-            action: 'add'
+            parent: item?.parent,
+            route: route
         })
 
         return item
     }
 
-    async updateById(id: string, value: object, invokeEvents = true): Promise<DataItem> {
+    async updateById(id: string, value: object, invokeEvents = true, route: string[]): Promise<DataItem> {
         console.log(`DataSource "${this.config.alias}" updateById`, id, 'invokeEvents: ', invokeEvents)
         let item = await this.getByIdRaw(id);
         console.log(item)
@@ -365,6 +373,12 @@ export class InternalDataSource {
             await queryRunner.release();
         }
 
+        console.log(item)
+
+        if (this.config.isTree) {
+            item.data.hasChildren = !!(await this.getChildren(item.id))
+        }
+
         if (invokeEvents) {
             await this.invokeEvents('onUpdate', {
                 old: origin,
@@ -381,7 +395,8 @@ export class InternalDataSource {
                 data: item.data,
                 rev: item?.rev
             },
-            action: 'update'
+            action: 'update',
+            route: route
         })
 
         return item
@@ -471,7 +486,7 @@ export class InternalDataSource {
             .execute()
     }
 
-    async removeById(id: string, invokeEvents = true, soft = true): Promise<DataItem> {
+    async removeById(id: string, invokeEvents = true, soft = true, route?: string[]): Promise<DataItem> {
         console.log("Remove by id", id, "soft", soft)
         let item = await this.getByIdRaw(id);
         if (!item) {
@@ -518,20 +533,21 @@ export class InternalDataSource {
                 id: item?.id,
                 rev: item?.rev
             },
-            action: 'remove'
+            action: 'remove',
+            route: route
         })
 
         return item
     }
 
-    async setValue(id: string, field: string, value: any, invokeEvents = true): Promise<DataItem> {
+    async setValue(id: string, field: string, value: any, invokeEvents = true, route: string[]): Promise<DataItem> {
         let item = await this.getByIdRaw(id);
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
         item.data[field] = value
 
-        return await this.updateById(id, item.data, invokeEvents)
+        return await this.updateById(id, item.data, invokeEvents, route)
     }
 
     async getByKeys(keys: any) {
@@ -665,7 +681,7 @@ export class InternalDataSource {
     }
 
     private async createRevision(queryRunner: QueryRunner, item: DataItem) {
-        console.log('createRevision', item)
+        //console.log('createRevision', item)
         try {
             let revRes = await queryRunner.manager.insert(Revision, {
                 alias: item.alias,

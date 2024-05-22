@@ -36,19 +36,19 @@ export class DataSourcesService {
         return await ds.getByKeys(keys)
     }
 
-    async insertData(alias: string, value: any, context: Context, id?: string, parentId?: string) {
+    async insertData(alias: string, value: any, context: Context, id?: string, parentId?: string, route?: string[]) {
         let ds = await this.getByAlias(alias, context)
-        return await ds.insert(value, id, parentId)
+        return await ds.insert(value, id, parentId, true, route)
     }
 
-    async updateDataById(alias: string, id: string, value: any, context: Context) {
+    async updateDataById(alias: string, id: string, value: any, context: Context, route: string[]) {
         let ds = await this.getByAlias(alias, context)
-        return await ds.updateById(id, value)
+        return await ds.updateById(id, value, true, route)
     }
 
-    async removeDataById(alias: string, id: string,  context: Context, soft: boolean = true) {
+    async removeDataById(alias: string, id: string,  context: Context, soft: boolean = true, route?: string[]) {
         let ds = await this.getByAlias(alias, context)
-        return ds.removeById(id, soft)
+        return ds.removeById(id, true, soft, route)
     }
 
     async importData(alias: string, data: any[], options: ImportDataOptionsDto, context: Context) {
@@ -56,9 +56,9 @@ export class DataSourcesService {
         return ds.import(data, options)
     }
 
-    async setValue(alias: string, id: string, field: string, value: any,  context: Context) {
+    async setValue(alias: string, id: string, field: string, value: any,  context: Context, route?: string[]) {
         let ds = await this.getByAlias(alias, context)
-        return await ds.setValue(id, field, value)
+        return await ds.setValue(id, field, value, true, route)
     }
 
     private async getConfig(alias: string): Promise<DataSourceConfigInterface> {

@@ -11,6 +11,8 @@ export class UpdateMessage {
         data?: any,
         rev: string
     }
+    route?: string[]
+    parent?: any
     action: 'add' | 'update' | 'remove'
 }
 

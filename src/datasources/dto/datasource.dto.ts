@@ -48,6 +48,9 @@ export class InsertDataDto {
 
     @ApiProperty()
     parentId?: string
+
+    @ApiProperty()
+    route?: string[]
 }
 
 export class UpdateDataByIdDto {
@@ -58,12 +61,16 @@ export class UpdateDataByIdDto {
 
     @ApiProperty()
     value: any
+
+    @ApiProperty()
+    route: string[]
 }
 
 export class RemoveDataByIdDto {
     alias: string
     id: string
     soft: boolean = true
+    route: string[]
 }
 
 export class SetValueDto {
@@ -72,6 +79,7 @@ export class SetValueDto {
     value: any
     field: string
     soft: boolean = true
+    route: string[]
 }
 
 export class ImportDataDto {
