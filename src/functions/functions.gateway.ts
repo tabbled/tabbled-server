@@ -51,7 +51,7 @@ export class FunctionsGateway {
             transaction.setStatus('ok')
             return {
                 success: true,
-                result: res,
+                data: res,
             }
         } catch (e) {
             Sentry.captureException(e)
