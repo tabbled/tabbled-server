@@ -1,24 +1,35 @@
-import { Injectable } from "@nestjs/common";
-import { ConductDto, ApplyEntityDto, HistoryDto, MovementDto, ReverseDto } from "./dto/aggregation.dto";
-import { DataSourcesService } from "../datasources/datasources.service";
-import { Context } from "../entities/context";
-import { InjectDataSource } from "@nestjs/typeorm";
-import { DataSource, QueryRunner } from "typeorm";
-import { AggregationHistory, AggregationMovement } from "./entities/aggregation.entity";
+import { Injectable } from '@nestjs/common'
+import {
+    ConductDto,
+    ApplyEntityDto,
+    HistoryDto,
+    MovementDto,
+    ReverseDto,
+} from './dto/aggregation.dto'
+import { DataSourcesService } from '../datasources/datasources.service'
+import { Context } from '../entities/context'
+import { InjectDataSource } from '@nestjs/typeorm'
+import { DataSource, QueryRunner } from 'typeorm'
+import {
+    AggregationHistory,
+    AggregationMovement,
+} from './entities/aggregation.entity'
 
 @Injectable()
 export class AggregationsService {
     constructor(
         private dataSourcesService: DataSourcesService,
         @InjectDataSource('default')
-        private datasource: DataSource,
-
+        private datasource: DataSource
     ) {}
 
     /** Move inventory in aggregation datasource from source to target aggregator
      */
     async conduct(params: ConductDto, context: Context) {
-        let ds = await this.dataSourcesService.getByAlias(params.dataSource, context)
+        let ds = await this.dataSourcesService.getByAlias(
+            params.dataSource,
+            context
+        )
         if (!ds.config.isAggregator) {
             throw 'DataSource is not an aggregator'
         }
@@ -27,7 +38,7 @@ export class AggregationsService {
         await queryRunner.startTransaction()
 
         try {
-            for(const i in params.records) {
+            for (const i in params.records) {
                 const rec = params.records[i]
 
                 if (rec.target && rec.target.keys) {
@@ -36,7 +47,7 @@ export class AggregationsService {
                         target = await makeNew(rec.target)
                         await ds.insertData(target, queryRunner)
                     } else {
-                        Object.keys(rec.target.values).forEach(f => {
+                        Object.keys(rec.target.values).forEach((f) => {
                             target.data[f] += rec.target.values[f]
                         })
                         await ds.updateData(target.id, target, queryRunner)
@@ -46,7 +57,7 @@ export class AggregationsService {
                         issuerId: params.issuerId,
                         dataSource: params.dataSource,
                         keys: rec.target.keys,
-                        values: rec.target.values
+                        values: rec.target.values,
                     })
                 }
 
@@ -56,14 +67,14 @@ export class AggregationsService {
                         source = await makeNew(rec.source)
                         await ds.insertData(source, queryRunner)
                     } else {
-                        Object.keys(rec.source.values).forEach(f => {
+                        Object.keys(rec.source.values).forEach((f) => {
                             source.data[f] -= rec.source.values[f]
                         })
                         await ds.updateData(source.id, source, queryRunner)
                     }
 
                     let values = {}
-                    Object.keys(rec.source.values).forEach(f => {
+                    Object.keys(rec.source.values).forEach((f) => {
                         values[f] = -rec.source.values[f]
                     })
 
@@ -71,7 +82,7 @@ export class AggregationsService {
                         issuerId: params.issuerId,
                         dataSource: params.dataSource,
                         keys: rec.source.keys,
-                        values: values
+                        values: values,
                     })
                 }
 
@@ -79,25 +90,25 @@ export class AggregationsService {
                     dataSource: params.dataSource,
                     issuerId: params.issuerId,
                     target: rec.target,
-                    source: rec.source
+                    source: rec.source,
                 })
             }
 
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
             return true
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
 
         async function makeNew(params: ApplyEntityDto) {
             let data = {}
-            Object.keys(params.keys).forEach(f => {
+            Object.keys(params.keys).forEach((f) => {
                 data[f] = params.keys[f]
             })
-            Object.keys(params.values).forEach(f => {
+            Object.keys(params.values).forEach((f) => {
                 data[f] = Number(params.values[f])
             })
 
@@ -106,9 +117,12 @@ export class AggregationsService {
     }
 
     /* Reverse values fo all items of conducted document
-    * */
+     * */
     async reverse(params: ReverseDto, context: Context) {
-        let ds = await this.dataSourcesService.getByAlias(params.dataSource, context)
+        let ds = await this.dataSourcesService.getByAlias(
+            params.dataSource,
+            context
+        )
         if (!ds.config.isAggregator) {
             throw 'DataSource is not an aggregator'
         }
@@ -117,42 +131,50 @@ export class AggregationsService {
         await queryRunner.startTransaction()
 
         try {
-            let hist = await this.getHistoryByIssuerId(queryRunner, params.dataSource, params.issuerId)
+            let hist = await this.getHistoryByIssuerId(
+                queryRunner,
+                params.dataSource,
+                params.issuerId
+            )
 
-            for(const i in hist) {
+            for (const i in hist) {
                 let source = await ds.getByKeysRaw(hist[i].keys)
                 let h = hist[i]
 
+                if (!source) continue
 
-                if (!source)
-                    continue
-
-                Object.keys(h.values).forEach(f => {
+                Object.keys(h.values).forEach((f) => {
                     source.data[f] -= h.values[f]
                 })
 
                 await ds.updateData(source.id, source, queryRunner)
             }
 
-            await queryRunner.manager.createQueryBuilder()
-                .delete().from(AggregationMovement).where({
-                    issuerId: params.issuerId
-                }).execute()
-            await queryRunner.manager.createQueryBuilder()
-                .delete().from(AggregationHistory).where({
-                    issuerId: params.issuerId
-                }).execute()
+            await queryRunner.manager
+                .createQueryBuilder()
+                .delete()
+                .from(AggregationMovement)
+                .where({
+                    issuerId: params.issuerId,
+                })
+                .execute()
+            await queryRunner.manager
+                .createQueryBuilder()
+                .delete()
+                .from(AggregationHistory)
+                .where({
+                    issuerId: params.issuerId,
+                })
+                .execute()
 
-
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
             return true
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
-
     }
 
     async addMovements(queryRunner: QueryRunner, movement: MovementDto) {
@@ -164,28 +186,28 @@ export class AggregationsService {
                 sourceKeys: movement.source.keys,
                 targetKeys: movement.target.keys,
                 sourceValues: movement.source.values,
-                targetValues: movement.target.values
+                targetValues: movement.target.values,
             })
         } catch (e) {
-            throw e;
+            throw e
         }
     }
 
     async addHistory(queryRunner: QueryRunner, history: HistoryDto) {
-
         try {
-            await queryRunner.manager.createQueryBuilder()
+            await queryRunner.manager
+                .createQueryBuilder()
                 .insert()
                 .into(AggregationHistory)
                 .values({
                     issuerId: history.issuerId,
                     datasource: history.dataSource,
                     keys: history.keys,
-                    values: history.values
+                    values: history.values,
                 })
                 .execute()
         } catch (e) {
-            throw e;
+            throw e
         }
     }
 
@@ -193,8 +215,8 @@ export class AggregationsService {
         return await queryRunner.manager.find(AggregationHistory, {
             where: {
                 issuerId: issuerId,
-                datasource: datasource
-            }
+                datasource: datasource,
+            },
         })
     }
 }

@@ -1,11 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 
 export class InviteUserDto {
     @ApiProperty()
-    email: string;
-    
+    email: string
+
     @ApiProperty()
-    account_id: string;
+    account_id: string
 }
 
 export class InsertUserDto {

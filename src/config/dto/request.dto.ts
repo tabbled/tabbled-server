@@ -1,11 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 
 export class ConfigDto {
     alias: string
 }
 
-export class GetManyDto extends ConfigDto {
-}
+export class GetManyDto extends ConfigDto {}
 
 export class GetByIdDto extends ConfigDto {
     id: string
@@ -58,7 +57,6 @@ export class ConfigImportDto {
 
     @ApiProperty()
     configConflictAction: ConflictAction
-
 }
 
 export class ConfigExportDto {

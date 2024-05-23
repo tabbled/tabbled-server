@@ -1,14 +1,14 @@
-import { Injectable } from "@nestjs/common";
-import { Server } from 'socket.io';
-import { Context } from "../entities/context";
+import { Injectable } from '@nestjs/common'
+import { Server } from 'socket.io'
+import { Context } from '../entities/context'
 
 export class UpdateMessage {
     type: 'data' | 'config'
     context: Context
     entity: {
-        alias: string,
-        id?: string,
-        data?: any,
+        alias: string
+        id?: string
+        data?: any
         rev: string
     }
     route?: string[]
@@ -33,5 +33,4 @@ export class RoomsService {
         }
         this.server.emit('updates', message)
     }
-
 }

@@ -1,9 +1,29 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty } from '@nestjs/swagger'
 
-export declare type StandardQueryOperator = '<' | '<=' | '==' | '!=' | '>' | '>=' | 'exists' | '!exists' | 'between' | '!between' | 'like' | '!like' | 'matches' | '!matches' | 'in' | '!in' | 'has' | '!has' | 'contains' | '!contains';
+export declare type StandardQueryOperator =
+    | '<'
+    | '<='
+    | '=='
+    | '!='
+    | '>'
+    | '>='
+    | 'exists'
+    | '!exists'
+    | 'between'
+    | '!between'
+    | 'like'
+    | '!like'
+    | 'matches'
+    | '!matches'
+    | 'in'
+    | '!in'
+    | 'has'
+    | '!has'
+    | 'contains'
+    | '!contains'
 export interface FilterItemInterface {
-    key: string,
-    op: StandardQueryOperator,
+    key: string
+    op: StandardQueryOperator
     compare?: any
 }
 
@@ -108,7 +128,7 @@ export class GetManyItemResponse {
     parentId?: string
 
     @ApiProperty()
-    hasChildren?: number
+    hasChildren?: number;
 
     [name: string]: any | never
 }

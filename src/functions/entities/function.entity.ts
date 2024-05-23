@@ -1,3 +1,1 @@
-export class Function {
-
-}
+export class Function {}

@@ -7,13 +7,13 @@ import {
     Req,
     Post,
     Body,
-    HttpCode
-} from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Request } from 'express';
-import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
-import { ConfigService } from "./config.service";
-import { ConfigImportDto } from "./dto/request.dto";
+    HttpCode,
+} from '@nestjs/common'
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { Request } from 'express'
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import { ConfigService } from './config.service'
+import { ConfigImportDto } from './dto/request.dto'
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -33,16 +33,20 @@ export class ConfigController {
             await this.configService.import(body, req['userId'])
 
             return {
-                success: true
+                success: true,
             }
         } catch (e) {
             console.error(e)
-            throw new HttpException({
-                status: HttpStatus.INTERNAL_SERVER_ERROR,
-                error: e.toString(),
-            }, HttpStatus.INTERNAL_SERVER_ERROR, {
-                cause: e.toString()
-            });
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                {
+                    cause: e.toString(),
+                }
+            )
         }
     }
 }

@@ -5,20 +5,25 @@ import {
     OnGatewayDisconnect,
     OnGatewayInit,
     SubscribeMessage,
-    WebSocketGateway
-} from "@nestjs/websockets";
-import { RoomsService } from "./rooms.service";
-import { Server, Socket } from 'socket.io';
-import { UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AuthService } from "../auth/auth.service";
-import * as process from "process";
-import axios from 'axios';
+    WebSocketGateway,
+} from '@nestjs/websockets'
+import { RoomsService } from './rooms.service'
+import { Server, Socket } from 'socket.io'
+import { UseGuards } from '@nestjs/common'
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { AuthService } from '../auth/auth.service'
+import * as process from 'process'
+import axios from 'axios'
 
 @UseGuards(JwtAuthGuard)
 @WebSocketGateway()
-export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
-    constructor(private readonly roomsService: RoomsService, private readonly auth: AuthService) {}
+export class RoomsGateway
+    implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
+    constructor(
+        private readonly roomsService: RoomsService,
+        private readonly auth: AuthService
+    ) {}
 
     @SubscribeMessage('rooms/join')
     join(@MessageBody() rooms: string[], @ConnectedSocket() client: Socket) {
@@ -30,16 +35,19 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         client.leave(room)
     }
 
-    async handleConnection(client:Socket) {
+    async handleConnection(client: Socket) {
         //const payload = this.jwtService.verify(token);
         let userId = await this.auth.getUserForSocket(client)
         console.log('handleConnection, userId: ', userId)
 
         if (process.env.CLOUD_ACCOUNT && userId) {
             try {
-                await axios.post(`${process.env.ENTRYPOINT_URL}/accounts/last-seen`, {
-                    account: process.env.CLOUD_ACCOUNT
-                })
+                await axios.post(
+                    `${process.env.ENTRYPOINT_URL}/accounts/last-seen`,
+                    {
+                        account: process.env.CLOUD_ACCOUNT,
+                    }
+                )
             } catch (e) {
                 console.error(e)
             }
@@ -48,8 +56,7 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         //await client.join('updates')
     }
 
-    handleDisconnect(client:Socket){
-    }
+    handleDisconnect(client: Socket) {}
 
     afterInit(server: Server): any {
         //console.log('afterInit')

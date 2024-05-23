@@ -1,5 +1,5 @@
 export interface Context {
-    accountId: number,
-    userId: number,
+    accountId: number
+    userId: number
     [name: string]: any | never
 }

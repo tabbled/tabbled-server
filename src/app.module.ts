@@ -1,23 +1,30 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
-import { AccountUsers, User } from "./users/entities/user.entity";
-import { Account } from "./accounts/entities/account.entity"
-import { DataItem, Revision } from "./datasources/entities/dataitem.entity";
-import { ConfigModule as ConfigItemModule } from './config/config.module';
-import { ConfigItem, ConfigParam, ConfigRevision } from "./config/entities/config.entity";
-import { FunctionsModule } from './functions/functions.module';
-import { PicturesModule } from './pictures/pictures.module';
-import { DataSourcesModule } from "./datasources/datasources.module";
-import { BullModule } from '@nestjs/bull';
-import { SettingsModule } from "./settings/settings.module";
-import { ReportsModule } from './reports/reports.module';
-import { AggregationsModule } from './aggregations/aggregations.module';
-import { AggregationHistory, AggregationMovement } from "./aggregations/entities/aggregation.entity";
+import { Module } from '@nestjs/common'
+import { AppController } from './app.controller'
+import { AppService } from './app.service'
+import { UsersModule } from './users/users.module'
+import { AuthModule } from './auth/auth.module'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { ConfigModule } from '@nestjs/config'
+import { AccountUsers, User } from './users/entities/user.entity'
+import { Account } from './accounts/entities/account.entity'
+import { DataItem, Revision } from './datasources/entities/dataitem.entity'
+import { ConfigModule as ConfigItemModule } from './config/config.module'
+import {
+    ConfigItem,
+    ConfigParam,
+    ConfigRevision,
+} from './config/entities/config.entity'
+import { FunctionsModule } from './functions/functions.module'
+import { PicturesModule } from './pictures/pictures.module'
+import { DataSourcesModule } from './datasources/datasources.module'
+import { BullModule } from '@nestjs/bull'
+import { SettingsModule } from './settings/settings.module'
+import { ReportsModule } from './reports/reports.module'
+import { AggregationsModule } from './aggregations/aggregations.module'
+import {
+    AggregationHistory,
+    AggregationMovement,
+} from './aggregations/entities/aggregation.entity'
 
 @Module({
     imports: [
@@ -44,14 +51,14 @@ import { AggregationHistory, AggregationMovement } from "./aggregations/entities
                 ConfigRevision,
                 ConfigParam,
                 AggregationHistory,
-                AggregationMovement
-            ]
+                AggregationMovement,
+            ],
         }),
         BullModule.forRoot({
             redis: {
                 host: process.env.REDIS_HOST,
                 port: Number(process.env.REDIS_PORT),
-            }
+            },
         }),
         ConfigItemModule,
         FunctionsModule,
@@ -59,11 +66,10 @@ import { AggregationHistory, AggregationMovement } from "./aggregations/entities
         DataSourcesModule,
         SettingsModule,
         ReportsModule,
-        AggregationsModule
+        AggregationsModule,
     ],
     controllers: [AppController],
     providers: [AppService],
-    exports: []
-
+    exports: [],
 })
 export class AppModule {}

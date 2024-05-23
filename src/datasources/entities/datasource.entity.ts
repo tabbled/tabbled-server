@@ -1,11 +1,15 @@
-import { Context } from "../../entities/context";
-import { GetDataManyOptionsDto, GetManyResponse, ImportDataOptionsDto } from "../dto/datasource.dto";
-import { DataSource, QueryRunner, Brackets, SelectQueryBuilder } from "typeorm";
-import { DataItem, Revision } from "./dataitem.entity";
+import { Context } from '../../entities/context'
+import {
+    GetDataManyOptionsDto,
+    GetManyResponse,
+    ImportDataOptionsDto,
+} from '../dto/datasource.dto'
+import { DataSource, QueryRunner, Brackets, SelectQueryBuilder } from 'typeorm'
+import { DataItem, Revision } from './dataitem.entity'
 import { FlakeId } from '../../flake-id'
-import { FieldConfigInterface } from "../../entities/field";
-import { FunctionsService } from "../../functions/functions.service";
-import { RoomsService } from "../../rooms/rooms.service";
+import { FieldConfigInterface } from '../../entities/field'
+import { FunctionsService } from '../../functions/functions.service'
+import { RoomsService } from '../../rooms/rooms.service'
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -18,51 +22,53 @@ export enum DataSourceSource {
     custom = 'custom',
     restapi = 'restapi',
     sql = 'sql',
-    field = 'field'
+    field = 'field',
 }
 
 export type HandlerType = 'script' | 'function'
 export type DataSourceEvent = 'onAdd' | 'onUpdate' | 'onRemove'
 
 export interface EventHandlerInterface {
-    event: DataSourceEvent,
+    event: DataSourceEvent
     handler: HandlerInterface
 }
 export interface HandlerInterface {
-    type: HandlerType,
-    script?: string,
+    type: HandlerType
+    script?: string
     functionId?: string | null
 }
 
 export interface DataSourceConfigInterface {
-    fields: FieldConfigInterface[],
-    type: DataSourceType,
-    title?: string,
-    alias: string,
-    readonly?: boolean,
-    keyField?: string,
-    isTree?: boolean,
-    source?: DataSourceSource,
-    script?: string,
-    eventHandlers: EventHandlerInterface[],
+    fields: FieldConfigInterface[]
+    type: DataSourceType
+    title?: string
+    alias: string
+    readonly?: boolean
+    keyField?: string
+    isTree?: boolean
+    source?: DataSourceSource
+    script?: string
+    eventHandlers: EventHandlerInterface[]
     keyFields: string[] // for aggregation datasource
     aggFields: string[] // for aggregation datasource
     isAggregator: boolean
 }
 
 export class InternalDataSource {
-    constructor(config: DataSourceConfigInterface,
-                dataSource: DataSource,
-                functionsService: FunctionsService,
-                context: Context,
-                rooms: RoomsService) {
+    constructor(
+        config: DataSourceConfigInterface,
+        dataSource: DataSource,
+        functionsService: FunctionsService,
+        context: Context,
+        rooms: RoomsService
+    ) {
         this.config = config
         this.dataSource = dataSource
         this.context = context
         this.functionsService = functionsService
         this.rooms = rooms
 
-        for(const i in config.fields) {
+        for (const i in config.fields) {
             let field = config.fields[i]
             this.fieldByAlias.set(field.alias, field)
         }
@@ -73,7 +79,7 @@ export class InternalDataSource {
     readonly functionsService: FunctionsService
     readonly rooms: RoomsService
 
-    private fieldByAlias: Map<string,FieldConfigInterface> = new Map()
+    private fieldByAlias: Map<string, FieldConfigInterface> = new Map()
 
     /**
      * @deprecated
@@ -88,28 +94,41 @@ export class InternalDataSource {
         return this.fieldByAlias.get(alias)
     }
 
-    async getMany(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
-        console.log("DataSource.getMany", JSON.stringify(options))
+    async getMany(
+        options: GetDataManyOptionsDto = {}
+    ): Promise<GetManyResponse> {
+        console.log('DataSource.getMany', JSON.stringify(options))
 
         const sal = 'ds'
         let query = this.getManyQueryBuilder(options, sal)
 
         let select = [`${sal}."id"`, `${sal}."parent_id" AS "parentId"`]
-        let fields = options.fields && options.fields.length ? options.fields : [...this.fieldByAlias.keys()]
+        let fields =
+            options.fields && options.fields.length
+                ? options.fields
+                : [...this.fieldByAlias.keys()]
 
-        for(let i in fields) {
+        for (let i in fields) {
             let f = this.fieldByAlias.get(fields[i])
             if (!f) continue
 
-            select.push(`(${sal}.data ->> '${f.alias}')${this.castTypeToSql(f.alias)} AS "${f.alias}"`)
+            select.push(
+                `(${sal}.data ->> '${f.alias}')${this.castTypeToSql(
+                    f.alias
+                )} AS "${f.alias}"`
+            )
 
             if (f.type === 'link') {
                 const displayProp = f.displayProp ? f.displayProp : 'name'
                 if (!f.isMultiple) {
-                    query.leftJoin(`data_items`,
+                    query.leftJoin(
+                        `data_items`,
                         `link_${f.alias}`,
-                        `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`)
-                    select.push(`(link_${f.alias}.data ->> '${displayProp}') as __${f.alias}_title`)
+                        `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`
+                    )
+                    select.push(
+                        `(link_${f.alias}.data ->> '${displayProp}') as __${f.alias}_title`
+                    )
                 } else {
                     select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' AS "${displayProp}"
                               FROM data_items  
@@ -121,7 +140,9 @@ export class InternalDataSource {
         }
 
         if (this.config.isTree) {
-            select.push(`CASE WHEN (SELECT count(*) FROM data_items WHERE parent_id = ${sal}."id" and alias = '${this.config.alias}' and deleted_at IS NULL LIMIT 1) > 0 THEN true ELSE false END  "hasChildren"`)
+            select.push(
+                `CASE WHEN (SELECT count(*) FROM data_items WHERE parent_id = ${sal}."id" and alias = '${this.config.alias}' and deleted_at IS NULL LIMIT 1) > 0 THEN true ELSE false END  "hasChildren"`
+            )
         }
 
         query.select(select)
@@ -132,8 +153,8 @@ export class InternalDataSource {
 
         // Includes additional ids to response
         if (options.include) {
-            let additional = options.include.filter( (el) => {
-                    return !data.find((val) => val.id === el )
+            let additional = options.include.filter((el) => {
+                return !data.find((val) => val.id === el)
             })
 
             if (additional.length) {
@@ -144,27 +165,33 @@ export class InternalDataSource {
 
         return {
             items: data,
-            count: await query.getCount()
+            count: await query.getCount(),
         }
     }
 
-    async getManyRaw(options: GetDataManyOptionsDto = {}): Promise<GetManyResponse> {
-
-        let query = this.getManyQueryBuilder(options)
-            .select()
+    async getManyRaw(
+        options: GetDataManyOptionsDto = {}
+    ): Promise<GetManyResponse> {
+        let query = this.getManyQueryBuilder(options).select()
 
         console.log('getManyRaw.query', query.getQuery())
 
         return {
             items: await query.getMany(),
-            count: await query.getCount()
+            count: await query.getCount(),
         }
     }
 
-    getManyQueryBuilder(options: GetDataManyOptionsDto = {}, alias = 'ds'):SelectQueryBuilder<DataItem> {
-        const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder(alias)
-            .where(`${alias}.alias = '${this.config.alias}' AND ${alias}.deleted_at IS NULL`)
+    getManyQueryBuilder(
+        options: GetDataManyOptionsDto = {},
+        alias = 'ds'
+    ): SelectQueryBuilder<DataItem> {
+        const rep = this.dataSource.getRepository(DataItem)
+        let query = rep
+            .createQueryBuilder(alias)
+            .where(
+                `${alias}.alias = '${this.config.alias}' AND ${alias}.deleted_at IS NULL`
+            )
 
         if (this.context.accountId) {
             query.andWhere(`${alias}.account_id = ${this.context.accountId}`)
@@ -172,39 +199,89 @@ export class InternalDataSource {
 
         if (options.take) query.limit(options.take)
         if (options.skip) query.offset(options.skip)
-        if (options.sort) query.addOrderBy(`(${alias}.data ->> '${options.sort.field}')${this.castTypeToSql(options.sort.field)}`, options.sort.ask ? "ASC" : "DESC")
+        if (options.sort)
+            query.addOrderBy(
+                `(${alias}.data ->> '${
+                    options.sort.field
+                }')${this.castTypeToSql(options.sort.field)}`,
+                options.sort.ask ? 'ASC' : 'DESC'
+            )
 
-
-
-        for(let i in options.filter) {
+        for (let i in options.filter) {
             let f = options.filter[i]
             switch (f.op) {
-                case "==": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} = '${f.compare}'`); break;
-                case "!=": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} <> '${f.compare}'`); break;
-                case "like": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} ILIKE '${f.compare}'`); break;
-                case "!like": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT ILIKE '${f.compare}'`); break;
-                case "<":
-                case "<=":
-                case ">":
-                case ">=": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} ${f.op} '${f.compare}'`); break;
-                case "in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} IN (${arrayToSqlString(f.compare)})`); break;
-                case "!in": query.andWhere(`(${alias}.data ->> '${f.key}')${this.castTypeToSql(f.key)} NOT IN ('${arrayToSqlString(f.compare)}')`); break;
+                case '==':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} = '${f.compare}'`
+                    )
+                    break
+                case '!=':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} <> '${f.compare}'`
+                    )
+                    break
+                case 'like':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} ILIKE '${f.compare}'`
+                    )
+                    break
+                case '!like':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} NOT ILIKE '${f.compare}'`
+                    )
+                    break
+                case '<':
+                case '<=':
+                case '>':
+                case '>=':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} ${f.op} '${f.compare}'`
+                    )
+                    break
+                case 'in':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} IN (${arrayToSqlString(f.compare)})`
+                    )
+                    break
+                case '!in':
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} NOT IN ('${arrayToSqlString(f.compare)}')`
+                    )
+                    break
             }
         }
 
         if (this.config.isTree && options.parentId !== undefined) {
-            query.andWhere(options.parentId ? `parent_id = ${options.parentId}` : `parent_id IS NULL`)
+            query.andWhere(
+                options.parentId
+                    ? `parent_id = ${options.parentId}`
+                    : `parent_id IS NULL`
+            )
         }
 
         if (options.id && options.id.length > 0) {
             query.andWhere(`id IN (${options.id.join(',')})`)
         }
 
-        if(options.search) {
+        if (options.search) {
             console.log('search - ', options.search)
 
-            let searchFields:Array<FieldConfigInterface> = []
-            this.config.fields.forEach(field => {
+            let searchFields: Array<FieldConfigInterface> = []
+            this.config.fields.forEach((field) => {
                 if (field.searchable) {
                     searchFields.push(field)
                 }
@@ -217,18 +294,26 @@ export class InternalDataSource {
             }
 
             if (searchFields.length) {
-                query.andWhere(new Brackets(qb => {
-                    searchFields.forEach(f => {
-                        if (f.type === 'string' || f.type === 'text') {
-                            qb.orWhere(`(${alias}.data ->> '${f.alias}')::varchar ILIKE '%${options.search}%'`)
-                        } else if (f.type === 'number') {
-                            qb.orWhere(`(${alias}.data ->> '${f.alias}')::varchar = '${options.search}'`)
-                        } else if (f.type === 'link') {
-                            //query.leftJoin('data_items', `${f.alias}_link`, `(${alias}.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
-                            qb.orWhere(`(${alias}.data ->> '__${f.alias}_title')::varchar ILIKE '%${options.search}%'`)
-                        }
+                query.andWhere(
+                    new Brackets((qb) => {
+                        searchFields.forEach((f) => {
+                            if (f.type === 'string' || f.type === 'text') {
+                                qb.orWhere(
+                                    `(${alias}.data ->> '${f.alias}')::varchar ILIKE '%${options.search}%'`
+                                )
+                            } else if (f.type === 'number') {
+                                qb.orWhere(
+                                    `(${alias}.data ->> '${f.alias}')::varchar = '${options.search}'`
+                                )
+                            } else if (f.type === 'link') {
+                                //query.leftJoin('data_items', `${f.alias}_link`, `(${alias}.data ->> '${f.alias}')::numeric = ${f.alias}_link.id`)
+                                qb.orWhere(
+                                    `(${alias}.data ->> '__${f.alias}_title')::varchar ILIKE '%${options.search}%'`
+                                )
+                            }
+                        })
                     })
-                }))
+                )
             }
         }
 
@@ -236,42 +321,53 @@ export class InternalDataSource {
 
         function arrayToSqlString(arr) {
             let str = ''
-            arr.forEach(item => {
-                if (str)
-                    str+=','
+            arr.forEach((item) => {
+                if (str) str += ','
                 str += `'${item}'`
             })
             return str
         }
-
     }
 
     castTypeToSql(alias) {
         let field = this.fieldByAlias.get(alias)
-        if (!field)
-            return ""
+        if (!field) return ''
 
         let cast
         switch (field.type) {
-            case "bool": cast = '::bool'; break;
-            case "datetime": cast = '::timestamp'; break;
-            case "date": cast = '::timestamp::date'; break;
-            case "time": cast = '::timestamp::time'; break;
-            case "text":
-            case "link":
-            case "enum":
-            case "string": cast = ''; break; //cast = field.isMultiple ? '::jsonb' : '::varchar';
-            case "number": cast = '::float'; break;
+            case 'bool':
+                cast = '::bool'
+                break
+            case 'datetime':
+                cast = '::timestamp'
+                break
+            case 'date':
+                cast = '::timestamp::date'
+                break
+            case 'time':
+                cast = '::timestamp::time'
+                break
+            case 'text':
+            case 'link':
+            case 'enum':
+            case 'string':
+                cast = ''
+                break //cast = field.isMultiple ? '::jsonb' : '::varchar';
+            case 'number':
+                cast = '::float'
+                break
 
-            default: cast = ""
+            default:
+                cast = ''
         }
 
         return cast
     }
 
-    async getByIdRaw(id: string) : Promise<DataItem | undefined> {
-        const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder()
+    async getByIdRaw(id: string): Promise<DataItem | undefined> {
+        const rep = this.dataSource.getRepository(DataItem)
+        let query = rep
+            .createQueryBuilder()
             .select()
             .where(` id = ${id} AND alias = '${this.config.alias}'`)
 
@@ -284,46 +380,48 @@ export class InternalDataSource {
         return await query.getOne()
     }
 
-    async getById(id: string) : Promise<any | undefined> {
+    async getById(id: string): Promise<any | undefined> {
         let item = await this.getByIdRaw(id)
 
-        if (!item)
-            return undefined
+        if (!item) return undefined
 
-        let data:any = item.data
+        let data: any = item.data
 
         if (this.config.isTree) {
-            data.children = (await this.getChildren(id)).map(d => d.data)
+            data.children = (await this.getChildren(id)).map((d) => d.data)
             data.hasChildren = !!data.children
         }
 
         return data
     }
 
-    async insert(value: any,  id?: string, parentId?: string, invokeEvents = true, route?: string[]): Promise<DataItem> {
+    async insert(
+        value: any,
+        id?: string,
+        parentId?: string,
+        invokeEvents = true,
+        route?: string[]
+    ): Promise<DataItem> {
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
         let item = null
 
-
-
         try {
             item = await this.insertData(value, queryRunner, id, parentId)
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
-
 
         if (invokeEvents) {
             await this.invokeEvents('onAdd', {
                 old: null,
-                new: item
-            });
+                new: item,
+            })
         }
 
         if (parentId && item) {
@@ -341,15 +439,25 @@ export class InternalDataSource {
                 rev: item?.rev,
             },
             parent: item?.parent,
-            route: route
+            route: route,
         })
 
         return item
     }
 
-    async updateById(id: string, value: object, invokeEvents = true, route: string[]): Promise<DataItem> {
-        console.log(`DataSource "${this.config.alias}" updateById`, id, 'invokeEvents: ', invokeEvents)
-        let item = await this.getByIdRaw(id);
+    async updateById(
+        id: string,
+        value: object,
+        invokeEvents = true,
+        route: string[]
+    ): Promise<DataItem> {
+        console.log(
+            `DataSource "${this.config.alias}" updateById`,
+            id,
+            'invokeEvents: ',
+            invokeEvents
+        )
+        let item = await this.getByIdRaw(id)
         console.log(item)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
@@ -361,16 +469,14 @@ export class InternalDataSource {
 
         item.data = await this.addLinkTitle(value)
 
-
-
         try {
             await this.updateData(id, item, queryRunner)
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
 
         console.log(item)
@@ -382,8 +488,8 @@ export class InternalDataSource {
         if (invokeEvents) {
             await this.invokeEvents('onUpdate', {
                 old: origin,
-                new: item
-            });
+                new: item,
+            })
         }
 
         this.rooms.emitUpdates({
@@ -393,61 +499,72 @@ export class InternalDataSource {
                 alias: this.config.alias,
                 id: item?.id,
                 data: item.data,
-                rev: item?.rev
+                rev: item?.rev,
             },
             action: 'update',
-            route: route
+            route: route,
         })
 
         return item
     }
 
-    async setDefaultValues(data: any):Promise<any> {
+    async setDefaultValues(data: any): Promise<any> {
         if (typeof data !== 'object') {
             data = {}
         }
         let item = {
-            id: data.id || flakeId.generateId().toString()
+            id: data.id || flakeId.generateId().toString(),
         }
         for (let i in this.config.fields) {
             const f = this.config.fields[i]
 
             if (!(f.alias in data)) {
                 switch (f.type) {
-                    case "bool": item[f.alias] = f.default ? f.default : false; break;
-                    case "string":
-                    case "enum":
-                    case "text": item[f.alias] = f.default ? f.default : ""; break;
-                    case "list":
-                    case "table": item[f.alias] = []; break;
-                    default: item[f.alias] = null;
+                    case 'bool':
+                        item[f.alias] = f.default ? f.default : false
+                        break
+                    case 'string':
+                    case 'enum':
+                    case 'text':
+                        item[f.alias] = f.default ? f.default : ''
+                        break
+                    case 'list':
+                    case 'table':
+                        item[f.alias] = []
+                        break
+                    default:
+                        item[f.alias] = null
                 }
             } else {
                 item[f.alias] = data[f.alias]
             }
 
             if (f.type === 'number' && f.autoincrement && !data[f.alias]) {
-                const rep = this.dataSource.getRepository(DataItem);
-                let query = rep.createQueryBuilder()
+                const rep = this.dataSource.getRepository(DataItem)
+                let query = rep
+                    .createQueryBuilder()
                     .select(`MAX((data ->> '${f.alias}')::numeric)`)
                     .where(`alias = '${this.config.alias}'`)
 
-
-                let d = await  query.getRawOne()
+                let d = await query.getRawOne()
 
                 item[f.alias] = Number(d.max) + 1
             }
         }
-        return item;
+        return item
     }
 
-    async insertData(data: any, queryRunner: QueryRunner, id?: string, parentId?: string): Promise<DataItem> {
-
+    async insertData(
+        data: any,
+        queryRunner: QueryRunner,
+        id?: string,
+        parentId?: string
+    ): Promise<DataItem> {
         let mData = await this.setDefaultValues(data)
 
         let item = {
             id: id || String(flakeId.generateId()),
-            rev: "",
+            rev: '',
             version: 1,
             parentId: parentId,
             alias: this.config.alias,
@@ -458,12 +575,13 @@ export class InternalDataSource {
             updatedBy: this.context.userId,
             createdAt: new Date(),
             deletedBy: null,
-            deletedAt: null
+            deletedAt: null,
         }
 
         item.rev = await this.createRevision(queryRunner, item)
 
-        await queryRunner.manager.createQueryBuilder()
+        await queryRunner.manager
+            .createQueryBuilder()
             .insert()
             .into(DataItem)
             .values(item)
@@ -472,23 +590,33 @@ export class InternalDataSource {
         return item
     }
 
-    async updateData(id: string, item: DataItem, queryRunner: QueryRunner): Promise<void> {
+    async updateData(
+        id: string,
+        item: DataItem,
+        queryRunner: QueryRunner
+    ): Promise<void> {
         item.rev = await this.createRevision(queryRunner, item)
         item.updatedAt = new Date()
         item.updatedBy = this.context.userId
 
-        await queryRunner.manager.createQueryBuilder()
+        await queryRunner.manager
+            .createQueryBuilder()
             .update(DataItem)
             .set(item)
             .andWhere({
-                id: item.id
+                id: item.id,
             })
             .execute()
     }
 
-    async removeById(id: string, invokeEvents = true, soft = true, route?: string[]): Promise<DataItem> {
-        console.log("Remove by id", id, "soft", soft)
-        let item = await this.getByIdRaw(id);
+    async removeById(
+        id: string,
+        invokeEvents = true,
+        soft = true,
+        route?: string[]
+    ): Promise<DataItem> {
+        console.log('Remove by id', id, 'soft', soft)
+        let item = await this.getByIdRaw(id)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
@@ -501,28 +629,28 @@ export class InternalDataSource {
         item.rev = await this.createRevision(queryRunner, item)
 
         try {
-            await queryRunner.manager.createQueryBuilder()
+            await queryRunner.manager
+                .createQueryBuilder()
                 .insert()
                 .update(DataItem)
                 .set(item)
                 .andWhere({
-                    id: item.id
+                    id: item.id,
                 })
                 .execute()
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
-
 
         if (invokeEvents) {
             await this.invokeEvents('onRemove', {
                 old: item,
-                new: null
-            });
+                new: null,
+            })
         }
 
         this.rooms.emitUpdates({
@@ -531,17 +659,23 @@ export class InternalDataSource {
             entity: {
                 alias: this.config.alias,
                 id: item?.id,
-                rev: item?.rev
+                rev: item?.rev,
             },
             action: 'remove',
-            route: route
+            route: route,
         })
 
         return item
     }
 
-    async setValue(id: string, field: string, value: any, invokeEvents = true, route: string[]): Promise<DataItem> {
-        let item = await this.getByIdRaw(id);
+    async setValue(
+        id: string,
+        field: string,
+        value: any,
+        invokeEvents = true,
+        route: string[]
+    ): Promise<DataItem> {
+        let item = await this.getByIdRaw(id)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
@@ -556,20 +690,22 @@ export class InternalDataSource {
     }
 
     async getByKeysRaw(keys: any) {
-        const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder()
+        const rep = this.dataSource.getRepository(DataItem)
+        let query = rep
+            .createQueryBuilder()
             .select()
             .where(`alias = '${this.config.alias}'`)
 
         let fields = Object.keys(keys)
-        for(const i in fields) {
+        for (const i in fields) {
             if (this.config.keyFields.includes(fields[i])) {
                 if (!keys[fields[i]]) {
                     query.andWhere(`(data ->> '${fields[i]}') IS NULL`)
                 } else {
-                    query.andWhere(`(data ->> '${fields[i]}') = '${keys[fields[i]]}'`)
+                    query.andWhere(
+                        `(data ->> '${fields[i]}') = '${keys[fields[i]]}'`
+                    )
                 }
-
             } else {
                 throw `Key ${fields[i]} is not a field of keys. Keys are ${this.config.keyFields}`
             }
@@ -583,8 +719,9 @@ export class InternalDataSource {
     }
 
     async getChildren(parentId: string) {
-        const rep = this.dataSource.getRepository(DataItem);
-        let query = rep.createQueryBuilder()
+        const rep = this.dataSource.getRepository(DataItem)
+        let query = rep
+            .createQueryBuilder()
             .select()
             .where(`alias = '${this.config.alias}' AND deleted_at IS NULL`)
 
@@ -599,30 +736,33 @@ export class InternalDataSource {
         return await query.getMany()
     }
 
-    async addLinkTitle(value) : Promise<any> {
+    async addLinkTitle(value): Promise<any> {
         let newValue = Object.assign({}, value)
         let keys = Object.keys(value)
 
-        for(let i in keys) {
+        for (let i in keys) {
             const key = keys[i]
             let field = this.fieldByAlias.get(key)
 
             if (field && field.type === 'link') {
-
                 if (!newValue[key]) {
                     newValue[`__${key}_title`] = ''
                     continue
                 }
 
-                const displayProp = field.displayProp ? field.displayProp : 'name'
+                const displayProp = field.displayProp
+                    ? field.displayProp
+                    : 'name'
 
-                const rep = this.dataSource.getRepository(DataItem);
+                const rep = this.dataSource.getRepository(DataItem)
 
                 if (field.isMultiple) {
-
                 } else {
-                    let query = await rep.createQueryBuilder()
-                        .where(`alias = '${field.datasource}' AND id = ${newValue[key]}`)
+                    let query = await rep
+                        .createQueryBuilder()
+                        .where(
+                            `alias = '${field.datasource}' AND id = ${newValue[key]}`
+                        )
                         .select()
 
                     let item = await query.getOne()
@@ -636,20 +776,18 @@ export class InternalDataSource {
     }
 
     async import(data: any[], options: ImportDataOptionsDto) {
-        console.log('import' ,data.length, options)
+        console.log('import', data.length, options)
         let queryRunner = this.dataSource.createQueryRunner()
         await queryRunner.startTransaction()
 
         let total = {
             inserted: 0,
-            updated: 0
+            updated: 0,
         }
 
         try {
             for (let i in data) {
                 let newItem = data[i]
-
-
 
                 let existingItem = null
 
@@ -659,23 +797,32 @@ export class InternalDataSource {
 
                 if (existingItem) {
                     if (options.replaceExisting) {
-                        console.log('update existing item ',newItem.id)
+                        console.log('update existing item ', newItem.id)
                         existingItem.data = newItem
-                        await this.updateData(existingItem.id, existingItem, queryRunner)
+                        await this.updateData(
+                            existingItem.id,
+                            existingItem,
+                            queryRunner
+                        )
                         total.updated++
                     }
                 } else {
-                    console.log('insert new item ',newItem.id)
-                    await this.insertData(newItem, queryRunner, newItem.id, newItem.parentId)
+                    console.log('insert new item ', newItem.id)
+                    await this.insertData(
+                        newItem,
+                        queryRunner,
+                        newItem.id,
+                        newItem.parentId
+                    )
                     total.inserted++
                 }
             }
-            await queryRunner.commitTransaction();
+            await queryRunner.commitTransaction()
         } catch (e) {
-            await queryRunner.rollbackTransaction();
+            await queryRunner.rollbackTransaction()
             throw e
         } finally {
-            await queryRunner.release();
+            await queryRunner.release()
         }
         return total
     }
@@ -690,35 +837,36 @@ export class InternalDataSource {
                 itemParentId: item.parentId,
                 itemId: item.id,
                 data: item.data,
-                createdBy: this.context.userId
+                createdBy: this.context.userId,
             })
-            return revRes.identifiers[0].id;
+            return revRes.identifiers[0].id
         } catch (e) {
-            throw e;
+            throw e
         }
     }
 
     invokeEvents(event: DataSourceEvent, context: any) {
-        if (!this.config)
-            return
+        if (!this.config) return
 
-        for(const i in this.config.eventHandlers) {
+        for (const i in this.config.eventHandlers) {
             let event_handler = this.config.eventHandlers[i]
 
-
-            if (event_handler.event === event && event_handler.handler.type === 'function') {
-
-
+            if (
+                event_handler.event === event &&
+                event_handler.handler.type === 'function'
+            ) {
                 try {
                     this.functionsService.callById(
                         event_handler.handler.functionId,
-                        Object.assign(this.context, context))
-                    console.log(`Event handler found "${event}" for dataSource "${this.config.alias}". Task to call func ${event_handler.handler.functionId} added`)
+                        Object.assign(this.context, context)
+                    )
+                    console.log(
+                        `Event handler found "${event}" for dataSource "${this.config.alias}". Task to call func ${event_handler.handler.functionId} added`
+                    )
                 } catch (e) {
                     console.error(e)
                     throw e
                 }
-
             }
         }
     }

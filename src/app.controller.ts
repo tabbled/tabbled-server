@@ -1,6 +1,6 @@
-import { Controller, Get } from "@nestjs/common";
-import { ApiOperation } from "@nestjs/swagger";
-let p = require('./../package.json');
+import { Controller, Get } from '@nestjs/common'
+import { ApiOperation } from '@nestjs/swagger'
+let p = require('./../package.json')
 
 @Controller()
 export class AppController {
@@ -10,7 +10,7 @@ export class AppController {
     info() {
         return {
             app: 'Tabbled',
-            version: p.version
+            version: p.version,
         }
     }
 }

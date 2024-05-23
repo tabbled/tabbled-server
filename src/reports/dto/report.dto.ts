@@ -1,6 +1,6 @@
 export class RenderByIdDto {
-  id: string
-  context: any
+    id: string
+    context: any
 }
 
 export class ReportDto {
@@ -12,5 +12,4 @@ export class ReportDto {
     testContext: string
     templateExcel?: string
     templateFormat: 'html' | 'excel'
-
 }

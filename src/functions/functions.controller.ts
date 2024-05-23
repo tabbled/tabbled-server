@@ -1,6 +1,13 @@
-import { Controller, Post, Body, Param, HttpException, HttpStatus } from "@nestjs/common";
-import { FunctionsService } from './functions.service';
-import { ApiOperation } from "@nestjs/swagger";
+import {
+    Controller,
+    Post,
+    Body,
+    Param,
+    HttpException,
+    HttpStatus,
+} from '@nestjs/common'
+import { FunctionsService } from './functions.service'
+import { ApiOperation } from '@nestjs/swagger'
 
 @Controller('functions')
 export class FunctionsController {
@@ -8,19 +15,20 @@ export class FunctionsController {
 
     @Post(':alias')
     @ApiOperation({ summary: 'Call a function by alias' })
-    async call(
-        @Param('alias') alias: string,
-        @Body() body: any
-    ) {
+    async call(@Param('alias') alias: string, @Body() body: any) {
         try {
-            return await this.functionsService.callByAlias(alias, body);
+            return await this.functionsService.callByAlias(alias, body)
         } catch (e) {
-            throw new HttpException({
-                status: HttpStatus.INTERNAL_SERVER_ERROR,
-                error: e.toString(),
-            }, HttpStatus.INTERNAL_SERVER_ERROR, {
-                cause: e.toString()
-            });
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                {
+                    cause: e.toString(),
+                }
+            )
         }
     }
 }
