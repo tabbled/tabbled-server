@@ -25,6 +25,7 @@ import {
     AggregationHistory,
     AggregationMovement,
 } from './aggregations/entities/aggregation.entity'
+import { FilesModule } from "./files/files.module";
 
 @Module({
     imports: [
@@ -63,6 +64,7 @@ import {
         ConfigItemModule,
         FunctionsModule,
         PicturesModule,
+        FilesModule,
         DataSourcesModule,
         SettingsModule,
         ReportsModule,
