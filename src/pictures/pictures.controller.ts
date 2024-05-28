@@ -9,9 +9,9 @@ import {
     HttpException,
     HttpStatus,
     Res,
-    Header,
-} from '@nestjs/common'
-import { PicturesService } from './pictures.service'
+    Header, Query, Delete
+} from "@nestjs/common";
+import { ImageSize, PicturesService } from "./pictures.service";
 import { FileInterceptor } from '@nestjs/platform-express'
 import { Response } from 'express'
 import { ApiOperation } from '@nestjs/swagger'
@@ -42,9 +42,9 @@ export class PicturesController {
     @Get(':name')
     @Header('Cache-Control', 'max-age=604800')
     @ApiOperation({ summary: 'Get a thumb picture by name' })
-    async getOne(@Param('name') name: string, @Res() response: Response) {
+    async getOne(@Param('name') name: string, @Query('size') size: ImageSize = 'small', @Res() response: Response) {
         try {
-            let f = await this.picturesService.getOne(name)
+            let f = await this.picturesService.getOne(name, size)
             let md = f.stat.metaData || {}
             response.setHeader(
                 'Content-Type',
@@ -70,24 +70,17 @@ export class PicturesController {
         }
     }
 
-    @Get(':name/big')
-    @Header('Cache-Control', 'max-age=604800')
-    @ApiOperation({ summary: 'Get a big picture by name' })
-    async getOneFull(@Param('name') name: string, @Res() response: Response) {
+    @Delete(':name')
+    @ApiOperation({ summary: 'Remove a picture by name' })
+    async removeOne(@Param('name') name: string) {
+        console.log('pictures.removeOne', name)
         try {
-            let f = await this.picturesService.getOne('big/' + name)
-            let md = f.stat.metaData || {}
-            response.setHeader(
-                'Content-Type',
-                md['content-type'] ? md['content-type'] : 'application/png'
-            )
-            response.setHeader(
-                'Origin-Filename',
-                md['origin-filename'] ? md['origin-filename'] : ''
-            )
-            return f.file.pipe(response)
+            await this.picturesService.removeByName(name)
+            return {
+                success: true
+            }
         } catch (e) {
-            console.error(e.toString())
+            console.error(e)
             throw new HttpException(
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,

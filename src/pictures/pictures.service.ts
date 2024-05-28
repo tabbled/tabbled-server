@@ -5,6 +5,8 @@ const tokgen = new TokenGenerator(256, TokenGenerator.BASE62)
 import { Client, ItemBucketMetadata } from 'minio'
 const sharp = require('sharp')
 
+export type ImageSize = 'tiny' | 'small' | 'big' | 'original'
+
 @Injectable()
 export class PicturesService {
     constructor() {
@@ -18,16 +20,19 @@ export class PicturesService {
     }
     minioClient = null
 
-    async getOne(name: string) {
+    async getOne(name: string, size: ImageSize = 'small') {
+        let path = process.env.S3_PICTURES_PATH ? process.env.S3_PICTURES_PATH + '/' + size : size
+        let filename = path ? path + '/' + name : name
+
         try {
             return {
                 stat: await this.minioClient.statObject(
                     process.env.S3_BUCKET,
-                    name
+                    filename
                 ),
                 file: await this.minioClient.getObject(
                     process.env.S3_BUCKET,
-                    name
+                    filename
                 ),
             }
         } catch (e) {
@@ -36,45 +41,75 @@ export class PicturesService {
     }
 
     async upload(uploadFile: any) {
-        let filename = ''
+        console.log('picturesService.upload', uploadFile)
+
+        let filename = tokgen.generate() + extname(uploadFile.originalname)
+
         try {
-            filename = await this.createThumbsAndUploadAllToS3(uploadFile)
-            return filename
+            await this.resizeAndUpload(filename, uploadFile, 'original')
+            await this.resizeAndUpload(filename, uploadFile, 'tiny')
+            await this.resizeAndUpload(filename, uploadFile, 'small')
+            await this.resizeAndUpload(filename, uploadFile, 'big')
         } catch (e) {
             throw e
         }
+        return filename
     }
 
-    async createThumbsAndUploadAllToS3(file) {
-        console.log('createThumbsAndUploadAllToS3', file)
 
-        let filename = tokgen.generate() + extname(file.originalname)
+    async resizeAndUpload(name: string, file, size: ImageSize) {
 
-        let thumb = await sharp(file.buffer).resize(100).toBuffer()
+        let width
+        switch (size) {
+            case "tiny": width = 32; break;
+            case "small": width = 100; break;
+            case "big": width = 500; break;
+            case "original": width = -1; break
+        }
 
-        let big = await sharp(file.buffer).resize(500).toBuffer()
+        let image = width !== -1
+            ? await sharp(file.buffer).resize(width).toBuffer()
+            : file.buffer
 
         let metaData: ItemBucketMetadata = {
             'Content-Type': file.mimetype,
         }
 
+
+        let path = process.env.S3_PICTURES_PATH ? process.env.S3_PICTURES_PATH + '/' + size : size
+        let filename = path ? path + '/' + name : name
+
+        await this.minioClient.putObject(
+            process.env.S3_BUCKET,
+            filename,
+            image,
+            metaData
+        )
+    }
+
+    async removeByName(name: string) {
         try {
-            await this.minioClient.putObject(
-                process.env.S3_BUCKET,
-                filename,
-                thumb,
-                metaData
-            )
-            await this.minioClient.putObject(
-                process.env.S3_BUCKET,
-                'big/' + filename,
-                big,
-                metaData
-            )
+            await this.removeBySize(name, 'tiny')
+            await this.removeBySize(name, 'small')
+            await this.removeBySize(name, 'big')
+            await this.removeBySize(name, 'original')
         } catch (e) {
+            console.error('error', e)
             throw e
         }
+    }
 
-        return filename
+    async removeBySize(name: string, size: ImageSize) {
+        let path = process.env.S3_PICTURES_PATH ? process.env.S3_PICTURES_PATH + '/' + size : size
+        let filename = path ? path + '/' + name : name
+        try {
+            return  await this.minioClient.removeObject(
+                process.env.S3_BUCKET,
+                filename
+            )
+        } catch (e) {
+            console.error('error', e)
+            throw e
+        }
     }
 }
