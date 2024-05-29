@@ -115,7 +115,7 @@ export class InternalDataSource {
 
         for (let i in fields) {
             let f
-            let linkFieldAlias
+            let linkedField: FieldConfigInterface
             let sp = fields[i].split('->')
             if (sp.length < 2) {
                 f = this.fieldByAlias.get(fields[i])
@@ -124,16 +124,14 @@ export class InternalDataSource {
                 if (link && link.type === 'link' && link.datasource) {
                     let linkDs = await this.service.getByAlias(link.datasource, this.context)
 
-                    if (!['table', 'link'].includes(linkDs.getFieldByAlias(sp[1]).type)) {
-                        f = link
-                        linkFieldAlias = sp[1]
-                    }
+                    f = link
+                    linkedField = linkDs.getFieldByAlias(sp[1])
                 }
             }
 
             if (!f) continue
 
-            if (!linkFieldAlias) {
+            if (!linkedField) {
                 select.push(
                     `(${sal}.data ->> '${f.alias}')${this.castTypeToSql(
                         f.alias
@@ -157,10 +155,20 @@ export class InternalDataSource {
                     select.push(
                         `(link_${f.alias}.data ->> '${displayProp}') as "__${f.alias}_title"`
                     )
-                    if (linkFieldAlias) {
+
+                    console.log('>>>> field', f)
+                    console.log('>>>> linked', linkedField)
+
+                    if (linkedField) {
+                        console.log('0000', linkedField)
+
                         select.push(
-                            `(link_${f.alias}.data ->> '${linkFieldAlias}') as "${f.alias}->${linkFieldAlias}"`
+                            linkedField.type !== 'link'
+                            ? `(link_${f.alias}.data ->> '${linkedField.alias}') as "${f.alias}->${linkedField.alias}"`
+                            : `(link_${f.alias}.data ->> '__${linkedField.alias}_title') as "__${f.alias}->${linkedField.alias}_title"`
                         )
+
+
                     }
                 } else {
                     select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' AS "${displayProp}"
@@ -195,6 +203,8 @@ export class InternalDataSource {
                 data = data.concat(await query.getRawMany())
             }
         }
+
+        console.log(data)
 
         return {
             items: data,
