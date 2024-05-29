@@ -156,11 +156,7 @@ export class InternalDataSource {
                         `(link_${f.alias}.data ->> '${displayProp}') as "__${f.alias}_title"`
                     )
 
-                    console.log('>>>> field', f)
-                    console.log('>>>> linked', linkedField)
-
                     if (linkedField) {
-                        console.log('0000', linkedField)
 
                         select.push(
                             linkedField.type !== 'link'
@@ -203,8 +199,6 @@ export class InternalDataSource {
                 data = data.concat(await query.getRawMany())
             }
         }
-
-        console.log(data)
 
         return {
             items: data,
