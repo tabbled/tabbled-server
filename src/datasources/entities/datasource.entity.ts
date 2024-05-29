@@ -10,6 +10,7 @@ import { FlakeId } from '../../flake-id'
 import { FieldConfigInterface } from '../../entities/field'
 import { FunctionsService } from '../../functions/functions.service'
 import { RoomsService } from '../../rooms/rooms.service'
+import { DataSourcesService } from "../datasources.service";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -60,13 +61,15 @@ export class InternalDataSource {
         dataSource: DataSource,
         functionsService: FunctionsService,
         context: Context,
-        rooms: RoomsService
+        rooms: RoomsService,
+        service: DataSourcesService
     ) {
         this.config = config
         this.dataSource = dataSource
         this.context = context
         this.functionsService = functionsService
         this.rooms = rooms
+        this.service = service
 
         for (const i in config.fields) {
             let field = config.fields[i]
@@ -78,6 +81,7 @@ export class InternalDataSource {
     readonly context: Context
     readonly functionsService: FunctionsService
     readonly rooms: RoomsService
+    readonly service: DataSourcesService
 
     private fieldByAlias: Map<string, FieldConfigInterface> = new Map()
 
@@ -102,6 +106,7 @@ export class InternalDataSource {
         const sal = 'ds'
         let query = this.getManyQueryBuilder(options, sal)
 
+        let joins = new Set<string>()
         let select = [`${sal}."id"`, `${sal}."parent_id" AS "parentId"`]
         let fields =
             options.fields && options.fields.length
@@ -109,26 +114,54 @@ export class InternalDataSource {
                 : [...this.fieldByAlias.keys()]
 
         for (let i in fields) {
-            let f = this.fieldByAlias.get(fields[i])
+            let f
+            let linkFieldAlias
+            let sp = fields[i].split('->')
+            if (sp.length < 2) {
+                f = this.fieldByAlias.get(fields[i])
+            } else {
+                let link = this.fieldByAlias.get(sp[0])
+                if (link && link.type === 'link' && link.datasource) {
+                    let linkDs = await this.service.getByAlias(link.datasource, this.context)
+
+                    if (!['table', 'link'].includes(linkDs.getFieldByAlias(sp[1]).type)) {
+                        f = link
+                        linkFieldAlias = sp[1]
+                    }
+                }
+            }
+
             if (!f) continue
 
-            select.push(
-                `(${sal}.data ->> '${f.alias}')${this.castTypeToSql(
-                    f.alias
-                )} AS "${f.alias}"`
-            )
+            if (!linkFieldAlias) {
+                select.push(
+                    `(${sal}.data ->> '${f.alias}')${this.castTypeToSql(
+                        f.alias
+                    )} AS "${f.alias}"`
+                )
+            }
+
 
             if (f.type === 'link') {
                 const displayProp = f.displayProp ? f.displayProp : 'name'
                 if (!f.isMultiple) {
-                    query.leftJoin(
-                        `data_items`,
-                        `link_${f.alias}`,
-                        `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`
-                    )
+                    if (!joins.has(`link_${f.alias}`)) {
+                        query.leftJoin(
+                            `data_items`,
+                            `link_${f.alias}`,
+                            `(${sal}.data ->> '${f.alias}')::numeric = link_${f.alias}.id AND link_${f.alias}.alias = '${f.datasource}'`
+                        )
+                        joins.add(`link_${f.alias}`)
+                    }
+
                     select.push(
-                        `(link_${f.alias}.data ->> '${displayProp}') as __${f.alias}_title`
+                        `(link_${f.alias}.data ->> '${displayProp}') as "__${f.alias}_title"`
                     )
+                    if (linkFieldAlias) {
+                        select.push(
+                            `(link_${f.alias}.data ->> '${linkFieldAlias}') as "${f.alias}->${linkFieldAlias}"`
+                        )
+                    }
                 } else {
                     select.push(`(SELECT json_agg(t) from (SELECT id::text, data->>'${displayProp}' AS "${displayProp}"
                               FROM data_items  

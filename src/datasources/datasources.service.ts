@@ -139,7 +139,8 @@ export class DataSourcesService {
             this.datasource,
             this.functionsService,
             context,
-            this.rooms
+            this.rooms,
+            this
         )
     }
 
