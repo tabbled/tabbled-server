@@ -690,6 +690,8 @@ export class InternalDataSource {
             })
         }
 
+
+
         this.rooms.emitUpdates({
             type: 'data',
             context: this.context,

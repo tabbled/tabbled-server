@@ -12,8 +12,8 @@ import {
     InsertDataDto,
     RemoveDataByIdDto,
     SetValueDto,
-    UpdateDataByIdDto,
-} from './dto/datasource.dto'
+    UpdateDataByIdDto
+} from "./dto/datasource.dto";
 import { Socket } from 'socket.io'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
