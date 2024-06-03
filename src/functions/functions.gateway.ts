@@ -9,7 +9,7 @@ import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { Server, Socket } from 'socket.io'
 import { FunctionsService } from './functions.service'
-import { CallWsFunctionDto } from './dto/call-function.dto'
+import { CallWsFunctionDto, RunScriptDto } from "./dto/call-function.dto";
 import * as Sentry from '@sentry/node'
 
 @UseGuards(JwtAuthGuard)
@@ -65,6 +65,30 @@ export class FunctionsGateway {
             span.finish()
             transaction.finish()
         }
+    }
+
+    @SubscribeMessage('functions/script/run')
+    async run(
+        @MessageBody() body: RunScriptDto,
+        @ConnectedSocket() client: Socket
+    ): Promise<any> {
+        try {
+            let res = await this.functionsService.runScript({
+                script: body.script,
+                context: body.context,
+                room: body.room
+            })
+            return {
+                success: true,
+                data: res,
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error_message: e.toString(),
+            }
+        }
+
     }
 
     async vmConsole(...args) {

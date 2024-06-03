@@ -33,4 +33,17 @@ export class RoomsService {
         }
         this.server.emit('updates', message)
     }
+
+    logToRoom(params: {
+        room: string,
+        level: 'log' | 'error',
+        message: any[]
+        payload?: any
+
+    }) {
+        this.server.emit(params.room, {
+            level: params.level,
+            message: params.message
+        })
+    }
 }

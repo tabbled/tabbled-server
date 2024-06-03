@@ -53,6 +53,9 @@ export class PicturesService {
         } catch (e) {
             throw e
         }
+        finally {
+            console.info('Picture has saved: ' + filename)
+        }
         return filename
     }
 
@@ -96,6 +99,9 @@ export class PicturesService {
         } catch (e) {
             console.error('error', e)
             throw e
+        }
+        finally {
+            console.info('Pictures has removed: ' + name)
         }
     }
 

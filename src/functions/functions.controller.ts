@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common'
 import { FunctionsService } from './functions.service'
 import { ApiOperation } from '@nestjs/swagger'
+import { RunScriptDto } from "./dto/call-function.dto";
 
 @Controller('functions')
 export class FunctionsController {
@@ -17,7 +18,12 @@ export class FunctionsController {
     @ApiOperation({ summary: 'Call a function by alias' })
     async call(@Param('alias') alias: string, @Body() body: any) {
         try {
-            return await this.functionsService.callByAlias(alias, body)
+            let res = await this.functionsService.callByAlias(alias, body)
+
+            return {
+                success: true,
+                data: res,
+            }
         } catch (e) {
             throw new HttpException(
                 {
@@ -29,6 +35,29 @@ export class FunctionsController {
                     cause: e.toString(),
                 }
             )
+        }
+    }
+
+    @Post('script/run')
+    @ApiOperation({ summary: 'Call a script with context' })
+    async runScript(@Body() body: RunScriptDto) {
+        try {
+            let res = await this.functionsService.runScript({
+                context: body.context,
+                script: body.script,
+                room: body.room
+            })
+
+            console.log(res)
+            return {
+                success: true,
+                data: res,
+            }
+        } catch (e) {
+            return {
+                success: false,
+                error: e.toString()
+            }
         }
     }
 }

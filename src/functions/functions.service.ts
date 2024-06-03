@@ -11,6 +11,7 @@ import { DataSourcesService } from '../datasources/datasources.service'
 import { AggregationsService } from '../aggregations/aggregations.service'
 import * as Sentry from '@sentry/node'
 import { UsersService } from '../users/users.service'
+import { RoomsService } from "../rooms/rooms.service";
 
 @Injectable()
 export class FunctionsService {
@@ -22,7 +23,8 @@ export class FunctionsService {
         @InjectDataSource('default')
         private datasource: DataSource,
         private userService: UsersService,
-        private aggService: AggregationsService
+        private aggService: AggregationsService,
+        private rooms: RoomsService
     ) {}
 
     async getByAlias(alias: string) {
@@ -74,34 +76,41 @@ export class FunctionsService {
         console.log('functions/call - ', func.alias)
         let ctx = Object.assign(JSON.parse(func.context), context)
 
-        return await this.runScript(func.script, ctx, vmConsole)
+        return await this.runScript({
+            script: func.script,
+            context: ctx,
+            vmConsole: vmConsole
+        })
     }
 
-    async runScript(
-        script: string,
-        context: any,
-        vmConsole?: (...args) => void
+    async runScript(params: {
+                        script: string,
+                        context: any,
+                        vmConsole?: (...args) => void,
+                        room?: string
+                    }
+
     ) {
         const dsHelper = new DataSourcesScriptHelper(
             this.dataSourcesService,
-            context
+            params.context
         )
         const requestHelper = new RequestScriptHelper()
         const utils = new Utils()
         const agg = new AggregationScriptHelper(
             this.aggService,
-            context,
-            vmConsole
+            params.context,
+            params.vmConsole
         )
-        const usr = new UserScriptHelper(this.userService, context)
+        const usr = new UserScriptHelper(this.userService, params.context)
 
         const vm = new NodeVM({
             timeout: 5000,
             allowAsync: true,
             wrapper: 'none',
-            console: !!vmConsole ? 'redirect' : 'inherit',
+            console: !!params.vmConsole || params.room ? 'redirect' : 'inherit',
             sandbox: {
-                ctx: context,
+                ctx: params.context,
                 dataSources: dsHelper,
                 request: requestHelper,
                 utilities: utils,
@@ -110,30 +119,59 @@ export class FunctionsService {
             },
         })
 
-        if (!!vmConsole) vm.on('console.log', vmConsole)
+        if(params.room) {
+            vm.on('console.log',  (...args) => {
+                this.rooms.logToRoom({
+                    room: params.room,
+                    level: "log",
+                    message: args
+                })
+            })
+        }
+
+        if (!!params.vmConsole) vm.on('console.log', params.vmConsole)
 
         process.on('uncaughtException', uncaughtException)
 
         let res = null
         try {
-            res = await vm.run(script)
+            res = await vm.run(params.script)
         } catch (e) {
             console.error(`Run script error: `, e)
-            if (!!vmConsole) vmConsole(e.toString())
+            if (!!params.vmConsole) params.vmConsole(e.toString())
+
+            if(params.room) {
+                this.rooms.logToRoom({
+                    room: params.room,
+                    level: "error",
+                    message: e.toString()
+                })
+            }
 
             Sentry.captureException(e)
             throw `${e.toString()}`
         } finally {
-            if (!!vmConsole) vmConsole('Function finished')
+            if (!!params.vmConsole) params.vmConsole('Function finished')
             process.off('uncaughtException', uncaughtException)
         }
 
+        let rooms = this.rooms
+
         function uncaughtException(err) {
             console.error('Asynchronous error caught.', err.toString())
-            if (!!vmConsole) {
-                vmConsole(err.toString())
-                Sentry.captureException(err)
+            if (!!params.vmConsole) {
+                params.vmConsole(err.toString())
             }
+
+            if(params.room) {
+                rooms.logToRoom({
+                    room: params.room,
+                    level: "error",
+                    message: err.toString()
+                })
+            }
+
+            Sentry.captureException(err)
         }
 
         return res instanceof Promise ? await res : res

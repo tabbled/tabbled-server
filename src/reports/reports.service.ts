@@ -26,10 +26,12 @@ export class ReportsService {
         data = Object.assign(data, renderByIdDto.context)
 
         try {
-            let res = await this.functionsService.runScript(
-                report.script,
-                data,
-                vmConsole
+            let res = await this.functionsService.runScript({
+                    context: data,
+                    script: report.script,
+                    vmConsole: vmConsole
+                }
+
             )
 
             data = Object.assign(data, res)
