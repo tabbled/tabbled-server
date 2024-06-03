@@ -286,17 +286,21 @@ export class InternalDataSource {
                     )
                     break
                 case 'in':
-                    query.andWhere(
-                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
-                            f.key
-                        )} IN (${arrayToSqlString(f.compare)})`
-                    )
+                    let strArr = arrayToSqlString(f.compare)
+                    if (strArr)
+                        query.andWhere(
+                            `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                                f.key
+                            )} IN (${strArr})`
+                        )
                     break
                 case '!in':
+                    let strArr2 = arrayToSqlString(f.compare)
+                    if (strArr2)
                     query.andWhere(
                         `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
                             f.key
-                        )} NOT IN ('${arrayToSqlString(f.compare)}')`
+                        )} NOT IN ('${arrayToSqlString(strArr2)}')`
                     )
                     break
             }
