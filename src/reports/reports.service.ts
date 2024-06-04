@@ -40,12 +40,19 @@ export class ReportsService {
             throw `Error while running the preparing script - ${e.toString()}`
         }
 
+        function getRecipe(format) {
+            switch (format) {
+                case "html": return 'chrome-pdf';
+                case "excel": return 'xlsx';
+                case "html-to-xlsx": return 'html-to-xlsx'
+            }
+        }
+
         let rep = {
             template: {
-                recipe:
-                    report.templateFormat === 'html' ? 'chrome-pdf' : 'xlsx',
+                recipe: getRecipe(report.templateFormat),
                 content:
-                    report.templateFormat === 'html'
+                    report.templateFormat === 'html' || report.templateFormat === 'html-to-xlsx'
                         ? report.template
                         : '{{{xlsxPrint}}}',
                 engine: 'handlebars',
@@ -63,6 +70,15 @@ export class ReportsService {
             }
         }
 
+        if (report.templateFormat === 'html-to-xlsx') {
+            //
+            rep.template.xlsx = {
+                templateAsset: {
+                    content: '<table></table>{{{xlsxPrint}}}',
+                },
+            }
+        }
+
         let contentType
         let filename = report.title
         switch (report.templateFormat) {
@@ -74,9 +90,15 @@ export class ReportsService {
                 contentType = 'application/pdf'
                 filename += '.pdf'
                 break
+            case 'html-to-xlsx':
+                contentType = 'application/xlsx'
+                filename += '.xlsx'
+                break
             default:
                 contentType = 'application/blob'
         }
+
+        console.log(rep)
 
         let rendered = await jsreport.render(rep)
         return {
