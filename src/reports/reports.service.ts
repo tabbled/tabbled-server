@@ -98,9 +98,6 @@ export class ReportsService {
                 contentType = 'application/blob'
         }
 
-        console.log(rep)
-
-        jsreport.assets.read('.someclass { color: red }')
         let rendered = await jsreport.render(rep)
         return {
             data: rendered,
