@@ -42,7 +42,10 @@ export class DataSourcesController {
                 userId: req['userId'],
             })
 
-            return await ds.getMany()
+            return await ds.getMany(null, {
+                accountId: req['accountId'],
+                userId: req['userId'],
+            })
         } catch (e) {
             throw new HttpException(
                 {

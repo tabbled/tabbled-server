@@ -11,7 +11,7 @@ import {
     GetDataManyDto,
     InsertDataDto,
     RemoveDataByIdDto,
-    SetValueDto,
+    SetValueDto, SetViewedDto,
     UpdateDataByIdDto
 } from "./dto/datasource.dto";
 import { Socket } from 'socket.io'
@@ -408,6 +408,32 @@ export class DataSourcesGateway {
         } finally {
             span.finish()
             transaction.finish()
+        }
+    }
+
+    @SubscribeMessage('dataSources/setViewed')
+    async setViewedByUser(
+        @MessageBody() body: SetViewedDto,
+        @ConnectedSocket() client: Socket
+    ) {
+        console.log(
+            'dataSources/setViewed, id: ', body.itemId
+        )
+
+        try {
+            await this.dataSourcesService.setViewed(body.itemId, {
+                accountId: client['accountId'],
+                userId: client['userId'],
+            })
+            return {
+                success: true
+            }
+        }
+        catch (e) {
+            return {
+                success: false,
+                error_message: e.toString(),
+            }
         }
     }
 }

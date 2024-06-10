@@ -90,3 +90,22 @@ export class Revision {
     @Column({ type: 'int', name: 'created_by' })
     public createdBy: number
 }
+
+
+@Entity({ name: 'item_viewing' })
+export class ItemView {
+    @PrimaryColumn({ type: 'bigint', name: 'item_id' })
+    itemId: BigInteger
+
+    @PrimaryColumn({ type: 'bigint', name: 'user_id' })
+    userId: number
+
+    @PrimaryColumn({ type: 'int', name: 'account_id' })
+    accountId: number
+
+    @CreateDateColumn({
+        type: 'timestamp',
+        name: 'viewed_at'
+    })
+    public viewedAt: Date
+}

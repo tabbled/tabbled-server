@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { ConfigModule } from '@nestjs/config'
 import { AccountUsers, User } from './users/entities/user.entity'
 import { Account } from './accounts/entities/account.entity'
-import { DataItem, Revision } from './datasources/entities/dataitem.entity'
+import { DataItem, ItemView, Revision } from "./datasources/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module'
 import {
     ConfigItem,
@@ -53,6 +53,7 @@ import { FilesModule } from "./files/files.module";
                 ConfigParam,
                 AggregationHistory,
                 AggregationMovement,
+                ItemView
             ],
         }),
         BullModule.forRoot({

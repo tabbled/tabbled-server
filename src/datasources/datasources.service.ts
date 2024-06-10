@@ -15,7 +15,7 @@ import {
 import { Context } from '../entities/context'
 import { FunctionsService } from '../functions/functions.service'
 import { RoomsService } from '../rooms/rooms.service'
-import { DataItem } from './entities/dataitem.entity'
+import { DataItem, ItemView } from "./entities/dataitem.entity";
 import * as XLSX from 'xlsx'
 
 @Injectable()
@@ -35,7 +35,7 @@ export class DataSourcesService {
         context: Context
     ): Promise<GetManyResponse> {
         let ds = await this.getByAlias(alias, context)
-        return await ds.getMany(options)
+        return await ds.getMany(options, context)
     }
 
     async getDataById(
@@ -151,7 +151,7 @@ export class DataSourcesService {
             filter: params.filter,
             fields: params.fields,
             take: 10000,
-        })
+        }, context)
 
         let sheet = []
         let titles = []
@@ -232,5 +232,24 @@ export class DataSourcesService {
             .getOne()
 
         return item.rev
+    }
+
+    async setViewed(id, context: Context) {
+        try {
+            let rep = this.datasource.getRepository(ItemView)
+            await rep.upsert({
+                itemId: id,
+                userId: context.userId,
+                accountId: context.accountId,
+                viewedAt: new Date()
+            }, {
+                conflictPaths: ["itemId", "userId", "accountId"],
+                upsertType: "on-conflict-do-update",
+            })
+        } catch (e) {
+            console.error(e)
+            throw e
+        }
+
     }
 }

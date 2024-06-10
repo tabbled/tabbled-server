@@ -32,6 +32,10 @@ export class GetDataManyDto {
     options: GetDataManyOptionsDto
 }
 
+export class SetViewedDto {
+    itemId: bigint
+}
+
 export class GetDataManyOptionsDto {
     filter?: FilterItemInterface[]
     fields?: string[]
