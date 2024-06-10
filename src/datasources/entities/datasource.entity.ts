@@ -89,9 +89,9 @@ export class InternalDataSource {
      * @deprecated
      * Get all data store from the data source
      */
-    async getAll(context: Context): Promise<GetManyResponse> {
+    async getAll(): Promise<GetManyResponse> {
         console.log('DataSource.getAll', this.context)
-        return await this.getMany(null, context)
+        return await this.getMany()
     }
 
     getFieldByAlias(alias: string) {
@@ -99,8 +99,7 @@ export class InternalDataSource {
     }
 
     async getMany(
-        options: GetDataManyOptionsDto = {},
-        ctx: Context
+        options: GetDataManyOptionsDto = {}
     ): Promise<GetManyResponse> {
         console.log('DataSource.getMany', JSON.stringify(options))
 
@@ -110,7 +109,6 @@ export class InternalDataSource {
         let joins = new Set<string>()
         let select = [`${sal}."id"`,
             `${sal}."parent_id" AS "parentId"`,
-            'link_viewing.viewedAt as "viewedAt"',
             `${sal}.created_at as "createdAt"`,
             `${sal}.updated_at as "updatedAt"`,
             `${sal}.created_by as "createdBy"`,
@@ -121,11 +119,16 @@ export class InternalDataSource {
                 ? options.fields
                 : [...this.fieldByAlias.keys()]
 
-        query.leftJoin(
-            `item_viewing`,
-            `link_viewing`,
-            `item_id = ${sal}."id" AND link_viewing.user_id = ${ctx.userId} AND link_viewing.account_id = ${ctx.accountId}`
-        )
+        if (this.context.userId) {
+            select.push('link_viewing.viewedAt as "viewedAt"')
+            query.leftJoin(
+                `item_viewing`,
+                `link_viewing`,
+                `item_id = ${sal}."id" AND link_viewing.user_id = ${this.context.userId} AND link_viewing.account_id = ${this.context.accountId}`
+            )
+        }
+
+
 
         for (let i in fields) {
             let f

@@ -35,7 +35,7 @@ export class DataSourcesService {
         context: Context
     ): Promise<GetManyResponse> {
         let ds = await this.getByAlias(alias, context)
-        return await ds.getMany(options, context)
+        return await ds.getMany(options)
     }
 
     async getDataById(
@@ -151,7 +151,7 @@ export class DataSourcesService {
             filter: params.filter,
             fields: params.fields,
             take: 10000,
-        }, context)
+        })
 
         let sheet = []
         let titles = []
