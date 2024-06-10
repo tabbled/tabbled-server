@@ -111,10 +111,10 @@ export class InternalDataSource {
         let select = [`${sal}."id"`,
             `${sal}."parent_id" AS "parentId"`,
             'link_viewing.viewedAt as "viewedAt"',
-            'created_at as "createdAt"',
-            'updated_at as "updatedAt"',
-            'created_by as "createdBy"',
-            'updated_by as "updatedBy"'
+            `${sal}.created_at as "createdAt"`,
+            `${sal}.updated_at as "updatedAt"`,
+            `${sal}.created_by as "createdBy"`,
+            `${sal}.updated_by as "updatedBy"`
         ]
         let fields =
             options.fields && options.fields.length
