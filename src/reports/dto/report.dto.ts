@@ -12,4 +12,5 @@ export class ReportDto {
     testContext: string
     templateExcel?: string
     templateFormat: 'html' | 'excel' | 'html-to-xlsx'
+    pageSettings: any
 }

@@ -57,8 +57,13 @@ export class ReportsService {
                         : '{{{xlsxPrint}}}',
                 engine: 'handlebars',
                 xlsx: undefined,
+                chrome: undefined
             },
             data: data,
+        }
+
+        if (report.templateFormat === 'html' && report.pageSettings) {
+            rep.template.chrome = report.pageSettings
         }
 
         if (report.templateFormat === 'excel') {
