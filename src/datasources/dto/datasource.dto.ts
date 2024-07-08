@@ -25,6 +25,7 @@ export interface FilterItemInterface {
     key: string
     op: StandardQueryOperator
     compare?: any
+    compare_2?: any
 }
 
 export class GetDataManyDto {

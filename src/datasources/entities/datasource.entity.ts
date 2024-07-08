@@ -262,6 +262,7 @@ export class InternalDataSource {
             )
 
         for (let i in options.filter) {
+
             let f = options.filter[i]
             switch (f.op) {
                 case '==':
@@ -318,6 +319,16 @@ export class InternalDataSource {
                         `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
                             f.key
                         )} NOT IN ('${arrayToSqlString(strArr2)}')`
+                    )
+                    break
+                case 'between':
+                    if (!f.compare || !f.compare_2)
+                        break
+
+                    query.andWhere(
+                        `(${alias}.data ->> '${f.key}')${this.castTypeToSql(
+                            f.key
+                        )} BETWEEN '${f.compare}' AND '${f.compare_2}'`
                     )
                     break
             }
