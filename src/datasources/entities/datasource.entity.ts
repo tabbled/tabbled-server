@@ -664,9 +664,11 @@ export class InternalDataSource {
         item: DataItem,
         queryRunner: QueryRunner
     ): Promise<void> {
+        item.version = item.version + 1
         item.rev = await this.createRevision(queryRunner, item)
         item.updatedAt = new Date()
         item.updatedBy = this.context.userId
+
 
         await queryRunner.manager
             .createQueryBuilder()
