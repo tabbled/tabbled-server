@@ -6,12 +6,21 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import * as Sentry from '@sentry/node'
 import { ProfilingIntegration } from '@sentry/profiling-node'
 import { SentryFilter } from './sentry.filter'
+import { ValidationPipe, VersioningType } from "@nestjs/common";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule)
     app.enableCors()
     app.use(bodyParser.json({ limit: '50mb' }))
     app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))
+
+    app.enableVersioning({
+        type: VersioningType.URI,
+    });
+
+    app.useGlobalPipes(new ValidationPipe({
+        transform: true
+    }));
 
     const config = new DocumentBuilder()
         .setTitle('Tabbled')
