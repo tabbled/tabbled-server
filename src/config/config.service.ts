@@ -15,7 +15,7 @@ import {
 } from './dto/request.dto'
 import { Context } from '../entities/context'
 import { FlakeId } from '../flake-id'
-import { DataItem } from '../datasources/entities/dataitem.entity'
+import { DataItem, ItemView } from "../datasources/entities/dataitem.entity";
 let flakeId = new FlakeId()
 
 @Injectable()
@@ -455,6 +455,12 @@ export class ConfigService {
         if (!options.importData) return
 
         if (options.clearData) {
+            await queryRunner.manager
+                .createQueryBuilder()
+                .delete()
+                .from(ItemView)
+                .execute()
+
             await queryRunner.manager
                 .createQueryBuilder()
                 .delete()
