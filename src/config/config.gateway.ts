@@ -15,8 +15,8 @@ import {
     GetByIdDto,
     GetByKeyDto,
     GetManyDto,
-    UpsertDto,
-} from './dto/request.dto'
+    UpsertDto
+} from "./dto/request.dto";
 import { RemoveDataByIdDto } from '../datasources/dto/datasource.dto'
 
 @UseGuards(JwtAuthGuard)

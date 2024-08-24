@@ -20,7 +20,6 @@ export class UpdateMessage {
 export class RoomsService {
     private server: Server = null
     constructor() {
-        console.log('constructor.RoomsService')
     }
 
     setServer(server) {

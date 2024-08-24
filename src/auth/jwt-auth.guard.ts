@@ -59,10 +59,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             return true
         } catch (e) {
             console.error(e)
-
             if (client.handshake) client.emit('login_needed', {})
 
-            throw e
+            throw new UnauthorizedException()
         }
     }
 

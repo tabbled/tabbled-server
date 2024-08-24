@@ -13,14 +13,12 @@ export declare type StandardQueryOperator =
     | '!between'
     | 'like'
     | '!like'
-    | 'matches'
-    | '!matches'
     | 'in'
     | '!in'
-    | 'has'
-    | '!has'
     | 'contains'
     | '!contains'
+    | 'empty'
+    | '!empty'
 export interface FilterItemInterface {
     key: string
     op: StandardQueryOperator

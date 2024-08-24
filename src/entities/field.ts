@@ -68,7 +68,7 @@ export interface FieldConfigInterface {
     listOf?: FieldListOfType
     keyProp?: string
     displayProp?: string
-    link?: string // Data source alias
+    //link?: string // Data source alias
     values?: EnumValuesInterface[] // Only for types
     isMultiple?: boolean
     isTree?: boolean
@@ -83,4 +83,7 @@ export interface FieldConfigInterface {
     format?: FormatType // // Only for string and number types
     autoincrement?: boolean // Only for number type
     searchable?: boolean // Only for string and number types
+    filterable?:boolean,
+    sortable?: boolean,
+    isSystem?: boolean
 }

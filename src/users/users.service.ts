@@ -15,8 +15,69 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private usersRepository: Repository<User>,
-        private datasource: DataSource
-    ) {}
+        private datasource: DataSource,
+        //private configService: ConfigService
+    ) {
+
+    }
+
+    //private getIndexUid = (context) => `${context.accountId}_users`
+    // private fields:CollectionFieldSchema[] = [{
+    //     name: "id",
+    //     type: "string",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "username",
+    //     type: "string",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "firstname",
+    //     type: "string",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "lastname",
+    //     type: "string",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "options",
+    //     type: "object",
+    //     optional: false,
+    //     index: false,
+    //     sort: false
+    // },{
+    //     name: "created_at",
+    //     type: "int64",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "updated_at",
+    //     type: "int64",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "active",
+    //     type: "bool",
+    //     optional: false,
+    //     index: true,
+    //     sort: true
+    // },{
+    //     name: "permissions",
+    //     type: "object",
+    //     optional: false,
+    //     index: false,
+    //     sort: false
+    // }]
+
     async insert(user: any, accountId: number): Promise<number | undefined> {
         if (!user.username || !user.password)
             throw 'Field username or password not provided'
@@ -66,6 +127,7 @@ export class UsersService {
             throw e
         } finally {
             await queryRunner.release()
+            //await this.reindex({ userId: null, accountId: accountId })
         }
     }
 
@@ -220,6 +282,7 @@ export class UsersService {
     }
 
     async update(id: number, user: any, accountId: number) {
+        console.log('update', id)
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
 
@@ -261,6 +324,7 @@ export class UsersService {
             throw e
         } finally {
             await queryRunner.release()
+            //await this.reindex({ userId: null, accountId: accountId })
         }
     }
 
@@ -286,6 +350,50 @@ export class UsersService {
             throw e
         } finally {
             await queryRunner.release()
+            //await this.reindex({ userId: null, accountId: accountId })
         }
     }
+
+    //async reindex(context: Context, removeIndex = false) {
+
+        // let indexUid = this.getIndexUid(context)
+        //
+        // try {
+        //     let collection = await this.searchClient.collections(indexUid)
+        //
+        //     let exists = await collection.exists()
+        //
+        //     if (removeIndex && exists) {
+        //         await collection.delete()
+        //         exists = false
+        //     }
+        //
+        //     if (!exists) {
+        //         await this.searchClient.collections().create({
+        //             name: indexUid,
+        //             fields: this.fields,
+        //             enable_nested_fields: true
+        //         })
+        //     }
+        //     let query = await this.usersRepository
+        //         .createQueryBuilder('users')
+        //         .select(
+        //             'id::varchar id, username, lastname, firstname, ' +
+        //             'settings, au.active active, au.permissions permissions,' +
+        //             '(extract(epoch from created_at) * 1000)::bigint created_at, (extract(epoch from updated_at) * 1000)::bigint updated_at'
+        //         )
+        //         .leftJoin('account_users', 'au', 'au.user_id = users.id')
+        //         .where('au.account_id = :id', { id: context.accountId })
+        //
+        //     let users = await query.getRawMany()
+        //     users.forEach(u => {
+        //         u.created_at = Number(u.created_at)
+        //         u.updated_at = Number(u.updated_at)
+        //     })
+        //     await collection.documents().import(users, {action: 'emplace'})
+        //
+        // } catch (e) {
+        //     console.error(e)
+        // }
+    //}
 }

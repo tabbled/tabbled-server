@@ -17,7 +17,7 @@ import {
 import { FunctionsModule } from './functions/functions.module'
 import { PicturesModule } from './pictures/pictures.module'
 import { DataSourcesModule } from './datasources/datasources.module'
-import { BullModule } from '@nestjs/bull'
+import { BullModule } from '@nestjs/bullmq';
 import { SettingsModule } from './settings/settings.module'
 import { ReportsModule } from './reports/reports.module'
 import { AggregationsModule } from './aggregations/aggregations.module'
@@ -26,14 +26,19 @@ import {
     AggregationMovement,
 } from './aggregations/entities/aggregation.entity'
 import { FilesModule } from "./files/files.module";
+import { DataIndexerModule } from './data-indexer/data-indexer.module';
+import { DatasourceField } from "./datasources/entities/field.entity";
+import { EventEmitterModule } from "@nestjs/event-emitter";
+import { PagesModule } from './pages/pages.module';
 
 @Module({
     imports: [
-        UsersModule,
-        AuthModule,
         ConfigModule.forRoot({
             isGlobal: true,
         }),
+        EventEmitterModule.forRoot({wildcard: true}),
+        UsersModule,
+        AuthModule,
         TypeOrmModule.forRoot({
             type: 'postgres',
             host: process.env.DB_HOST,
@@ -53,14 +58,16 @@ import { FilesModule } from "./files/files.module";
                 ConfigParam,
                 AggregationHistory,
                 AggregationMovement,
-                ItemView
+                ItemView,
+                DatasourceField
             ],
         }),
         BullModule.forRoot({
-            redis: {
+            connection: {
                 host: process.env.REDIS_HOST,
                 port: Number(process.env.REDIS_PORT),
             },
+
         }),
         ConfigItemModule,
         FunctionsModule,
@@ -70,6 +77,8 @@ import { FilesModule } from "./files/files.module";
         SettingsModule,
         ReportsModule,
         AggregationsModule,
+        DataIndexerModule,
+        PagesModule,
     ],
     controllers: [AppController],
     providers: [AppService],

@@ -1,20 +1,32 @@
 import {
+    Body,
     Controller,
-    Param,
+    Get, HttpCode,
     HttpException,
     HttpStatus,
-    Get,
+    Param,
+    Post,
+    Req,
     UseGuards,
-    Req, Version
+    UseInterceptors,
+    Version
 } from "@nestjs/common";
-import { JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { Request } from 'express'
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Request } from "express";
+import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { DataSourceV2Service } from "./datasourceV2.service";
-import { GetRevisionsResponseDto } from "./dto/datasourceV2.dto";
+import {
+    DataIndexRequestDto,
+    DataIndexResponseDto,
+    GetDataManyRequestDto,
+    GetDataManyResponseDto,
+    GetManyResponseDto,
+    GetRevisionsResponseDto
+} from "./dto/datasourceV2.dto";
 import { Context } from "../entities/context";
+import { DataSourceInterceptor } from "./datasourceV2.interceptor";
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DataSourceInterceptor)
 @ApiBearerAuth()
 @Controller({
     version: ['1', '2'],
@@ -23,6 +35,99 @@ import { Context } from "../entities/context";
 export class DataSourceV2Controller {
     constructor(private readonly dsService: DataSourceV2Service) {}
 
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
+    @Version(['2'])
+    @Post(':alias/data')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Get many data of datasource by alias' })
+    async getDataMany(
+        @Param('alias') alias: string,
+        @Body() body: GetDataManyRequestDto,
+        @Req() req: Request,
+    ): Promise<GetDataManyResponseDto> {
+        let config = req['datasource.config']
+
+        if (config.source !== 'internal') {
+            throw new HttpException(
+                {
+                    success: false,
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    error: `DataSource ${alias} is not an internal source`
+                }, HttpStatus.BAD_REQUEST)
+        }
+
+        let res
+        try {
+             res = await this.dsService.getDataMany({
+                ...body,
+                dataSourceConfig: config
+            }, this.getContext(req))
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+
+
+
+
+        return {
+            statusCode: 200,
+            ...res
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
+    @Version(['2'])
+    @Post(':alias/data/index')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Index data source data into search engine,' +
+            'if you need to reindex the all of the data. ' +
+            'Platform automatically index when data changes.' })
+    async dataReindex(
+        @Param('alias') alias: string,
+        @Body() body: DataIndexRequestDto,
+        @Req() req: Request,
+    ): Promise<DataIndexResponseDto> {
+
+        let config = req['datasource.config']
+        if (config.source !== 'internal') {
+            throw new HttpException(
+                {
+                    success: false,
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    error: `DataSource ${alias} is not an internal source`
+                }, HttpStatus.BAD_REQUEST)
+        }
+
+        try {
+            let result = await this.dsService.dataReindex({
+                dataSourceConfig: config,
+                ids: body.ids
+            }, this.getContext(req))
+
+            return {
+                statusCode: HttpStatus.CREATED,
+                jobId: result.jobId
+            }
+        } catch (e) {
+            console.error(e)
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
     @Version(['1', '2'])
     @Get(':alias/data/:itemId/revision')
     @ApiOperation({ summary: 'Get revisions list from datasource item by alias' })
@@ -39,21 +144,20 @@ export class DataSourceV2Controller {
         } catch (e) {
             throw new HttpException(
                 {
-                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                     error: e.toString(),
                 },
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                {
-                    cause: e.toString(),
-                }
+                HttpStatus.INTERNAL_SERVER_ERROR
             )
         }
     }
 
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
     @Version(['1', '2'])
     @Get(':alias/data/:itemId/revision/:revId')
     @ApiOperation({ summary: 'Get revision from datasource item by alias by revision id' })
-    async getDataMany(
+    async getRevisionById(
         @Param('alias') alias: string,
         @Param('itemId') itemId: string,
         @Param('revId') revId: number,
@@ -68,13 +172,37 @@ export class DataSourceV2Controller {
         } catch (e) {
             throw new HttpException(
                 {
-                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                     error: e.toString(),
                 },
-                HttpStatus.INTERNAL_SERVER_ERROR,
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['1'])
+    @Get('')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Get many datasource' })
+    async getMany(
+        @Body() body: GetDataManyRequestDto,
+        @Req() req: Request,
+    ): Promise<GetManyResponseDto> {
+        try {
+            let items = await this.dsService.getManyV1()
+            return {
+                statusCode: 200,
+                items: items.items,
+                count: items.count
+            }
+        } catch (e) {
+            throw new HttpException(
                 {
-                    cause: e.toString(),
-                }
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
             )
         }
     }

@@ -17,6 +17,7 @@ import { FunctionsService } from '../functions/functions.service'
 import { RoomsService } from '../rooms/rooms.service'
 import { DataItem, ItemView } from "./entities/dataitem.entity";
 import * as XLSX from 'xlsx'
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 @Injectable()
 export class DataSourcesService {
@@ -26,7 +27,8 @@ export class DataSourcesService {
         @InjectDataSource('default')
         private datasource: DataSource,
         @Inject(RoomsService)
-        private rooms: RoomsService
+        private rooms: RoomsService,
+        private eventEmitter: EventEmitter2
     ) {}
 
     async getDataMany(
@@ -140,7 +142,8 @@ export class DataSourcesService {
             this.functionsService,
             context,
             this.rooms,
-            this
+            this,
+            this.eventEmitter
         )
     }
 

@@ -14,6 +14,10 @@ export class GetByKeyDto extends ConfigDto {
     key: string
 }
 
+export class GetPageByPathDto extends ConfigDto {
+    path: string
+}
+
 export class UpsertDto extends ConfigDto {
     id: string
     value: any

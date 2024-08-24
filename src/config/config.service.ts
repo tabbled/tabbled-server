@@ -11,11 +11,12 @@ import {
     ConfigImportDto,
     GetByIdDto,
     GetByKeyDto,
-    GetManyDto,
-} from './dto/request.dto'
+    GetManyDto
+} from "./dto/request.dto";
 import { Context } from '../entities/context'
 import { FlakeId } from '../flake-id'
 import { DataItem, ItemView } from "../datasources/entities/dataitem.entity";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 let flakeId = new FlakeId()
 
 @Injectable()
@@ -24,7 +25,8 @@ export class ConfigService {
         @InjectRepository(ConfigItem)
         private dataItemsRepository: Repository<ConfigItem>,
         @InjectDataSource('default')
-        private datasource: DataSource
+        private datasource: DataSource,
+        private eventEmitter: EventEmitter2
     ) {}
 
     async getMany(params: GetManyDto): Promise<any> {
@@ -77,6 +79,10 @@ export class ConfigService {
         try {
             item = await this.insertData(alias, value, queryRunner, context, id)
             await queryRunner.commitTransaction()
+            this.eventEmitter.emit(`config-update.${item.alias}.inserted`, {
+                item,
+                context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
@@ -105,8 +111,12 @@ export class ConfigService {
 
         item.data = value
         try {
-            await this.updateData(alias, id, item, queryRunner, context)
+            item = await this.updateData(alias, id, item, queryRunner, context)
             await queryRunner.commitTransaction()
+            this.eventEmitter.emit(`config-update.${item.alias}.updated`, {
+                item,
+                context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
@@ -155,10 +165,11 @@ export class ConfigService {
         item: ConfigItem,
         queryRunner: QueryRunner,
         context: Context
-    ): Promise<void> {
+    ): Promise<ConfigItem> {
         item.rev = await this.createRevision(queryRunner, item, context)
         item.updatedAt = new Date()
         item.updatedBy = context.userId
+        item.version += 1
 
         await queryRunner.manager
             .createQueryBuilder()
@@ -168,6 +179,8 @@ export class ConfigService {
                 id: item.id,
             })
             .execute()
+
+        return item
     }
 
     async removeById(
@@ -192,6 +205,7 @@ export class ConfigService {
         item.deletedAt = new Date()
         item.deletedBy = context.userId
         item.rev = await this.createRevision(queryRunner, item, context)
+        item.version += 1
 
         try {
             await queryRunner.manager
@@ -204,6 +218,11 @@ export class ConfigService {
                 })
                 .execute()
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`config-update.${item.alias}.removed`, {
+                item,
+                context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e

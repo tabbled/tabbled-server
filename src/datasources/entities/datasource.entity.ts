@@ -11,6 +11,7 @@ import { FieldConfigInterface } from '../../entities/field'
 import { FunctionsService } from '../../functions/functions.service'
 import { RoomsService } from '../../rooms/rooms.service'
 import { DataSourcesService } from "../datasources.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 let flakeId = new FlakeId()
 
 export enum DataSourceType {
@@ -62,7 +63,8 @@ export class InternalDataSource {
         functionsService: FunctionsService,
         context: Context,
         rooms: RoomsService,
-        service: DataSourcesService
+        service: DataSourcesService,
+        eventEmitter: EventEmitter2
     ) {
         this.config = config
         this.dataSource = dataSource
@@ -70,6 +72,7 @@ export class InternalDataSource {
         this.functionsService = functionsService
         this.rooms = rooms
         this.service = service
+        this.eventEmitter = eventEmitter
 
         for (const i in config.fields) {
             let field = config.fields[i]
@@ -82,6 +85,7 @@ export class InternalDataSource {
     readonly functionsService: FunctionsService
     readonly rooms: RoomsService
     readonly service: DataSourcesService
+    readonly eventEmitter: EventEmitter2
 
     private fieldByAlias: Map<string, FieldConfigInterface> = new Map()
 
@@ -479,6 +483,11 @@ export class InternalDataSource {
         try {
             item = await this.insertData(value, queryRunner, id, parentId)
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`data-update.${this.config.alias}.inserted`, {
+                item,
+                context: this.context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
@@ -527,7 +536,6 @@ export class InternalDataSource {
             invokeEvents
         )
         let item = await this.getByIdRaw(id)
-        console.log(item)
         if (!item) {
             throw new Error(`Item by id "${id}" not found`)
         }
@@ -541,6 +549,11 @@ export class InternalDataSource {
         try {
             await this.updateData(id, item, queryRunner)
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`data-update.${this.config.alias}.updated`, {
+                item,
+                context: this.context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
@@ -710,6 +723,11 @@ export class InternalDataSource {
                 })
                 .execute()
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`data-update.${this.config.alias}.removed`, {
+                item,
+                context: this.context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
@@ -891,6 +909,10 @@ export class InternalDataSource {
                 }
             }
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`data-update.${this.config.alias}.imported`, {
+                context: this.context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             throw e
