@@ -30,6 +30,8 @@ import { DataIndexerModule } from './data-indexer/data-indexer.module';
 import { DatasourceField } from "./datasources/entities/field.entity";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { PagesModule } from './pages/pages.module';
+import { VariablesModule } from './variables/variables.module';
+import { Variable } from "./variables/variables.entity";
 
 @Module({
     imports: [
@@ -59,7 +61,8 @@ import { PagesModule } from './pages/pages.module';
                 AggregationHistory,
                 AggregationMovement,
                 ItemView,
-                DatasourceField
+                DatasourceField,
+                Variable
             ],
         }),
         BullModule.forRoot({
@@ -79,6 +82,7 @@ import { PagesModule } from './pages/pages.module';
         AggregationsModule,
         DataIndexerModule,
         PagesModule,
+        VariablesModule,
     ],
     controllers: [AppController],
     providers: [AppService],

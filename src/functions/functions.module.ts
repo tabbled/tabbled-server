@@ -8,6 +8,7 @@ import { DataSourcesModule } from '../datasources/datasources.module'
 import { AggregationsModule } from '../aggregations/aggregations.module'
 import { UsersModule } from '../users/users.module'
 import { RoomsModule } from '../rooms/rooms.module'
+import { VariablesModule } from "../variables/variables.module";
 
 @Module({
     controllers: [FunctionsController],
@@ -18,6 +19,7 @@ import { RoomsModule } from '../rooms/rooms.module'
         AggregationsModule,
         UsersModule,
         RoomsModule,
+        VariablesModule
     ],
     exports: [FunctionsService],
 })

@@ -12,6 +12,7 @@ import { AggregationsService } from '../aggregations/aggregations.service'
 import * as Sentry from '@sentry/node'
 import { UsersService } from '../users/users.service'
 import { RoomsService } from "../rooms/rooms.service";
+import { VariablesService } from "../variables/variables.service";
 
 @Injectable()
 export class FunctionsService {
@@ -24,7 +25,8 @@ export class FunctionsService {
         private datasource: DataSource,
         private userService: UsersService,
         private aggService: AggregationsService,
-        private rooms: RoomsService
+        private rooms: RoomsService,
+        private variables: VariablesService
     ) {}
 
     async getByAlias(alias: string) {
@@ -103,6 +105,7 @@ export class FunctionsService {
             params.vmConsole
         )
         const usr = new UserScriptHelper(this.userService, params.context)
+        const vars = new VariablesHelper(this.variables, params.context)
 
         const vm = new NodeVM({
             timeout: 5000,
@@ -116,6 +119,7 @@ export class FunctionsService {
                 utilities: utils,
                 aggregations: agg,
                 users: usr,
+                variables: vars
             },
         })
 
@@ -244,6 +248,23 @@ class UserScriptHelper {
 
     async getBy(where: any) {
         return this.userService.findOne(where)
+    }
+}
+
+class VariablesHelper {
+    constructor(variablesService: VariablesService, context: Context) {
+        this.context = context
+        this.service = variablesService
+    }
+    readonly context: Context
+    readonly service: VariablesService
+
+    async get(name: string) : Promise<any> {
+        return await this.service.get(name, this.context)
+    }
+
+    async set(name: string, value: any) : Promise<void> {
+        await this.service.set(name, value, this.context)
     }
 }
 
