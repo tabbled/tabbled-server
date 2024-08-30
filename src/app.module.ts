@@ -5,9 +5,16 @@ import { UsersModule } from './users/users.module'
 import { AuthModule } from './auth/auth.module'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { ConfigModule } from '@nestjs/config'
-import { AccountUsers, User } from './users/entities/user.entity'
+import {
+    AccountUsers,
+    User
+} from './users/entities/user.entity'
 import { Account } from './accounts/entities/account.entity'
-import { DataItem, ItemView, Revision } from "./datasources/entities/dataitem.entity";
+import {
+    DataItem,
+    ItemView,
+    Revision
+} from "./datasources/entities/dataitem.entity";
 import { ConfigModule as ConfigItemModule } from './config/config.module'
 import {
     ConfigItem,
@@ -32,12 +39,16 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
 import { PagesModule } from './pages/pages.module';
 import { VariablesModule } from './variables/variables.module';
 import { Variable } from "./variables/variables.entity";
+import { JobsModule } from './jobs/jobs.module';
+import { Job } from "./jobs/jobs.entity";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
         }),
+        ScheduleModule.forRoot(),
         EventEmitterModule.forRoot({wildcard: true}),
         UsersModule,
         AuthModule,
@@ -62,7 +73,8 @@ import { Variable } from "./variables/variables.entity";
                 AggregationMovement,
                 ItemView,
                 DatasourceField,
-                Variable
+                Variable,
+                Job
             ],
         }),
         BullModule.forRoot({
@@ -83,6 +95,7 @@ import { Variable } from "./variables/variables.entity";
         DataIndexerModule,
         PagesModule,
         VariablesModule,
+        JobsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

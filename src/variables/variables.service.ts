@@ -9,10 +9,15 @@ export class VariablesService {
     constructor(@InjectDataSource('default')
                 private datasource: DataSource) {
     }
-    async get(name: string, context: Context) {
+    async get(name: string, defaultValue: any, context: Context) {
         let val = await this.datasource.getRepository(Variable)
             .findOneBy({ name: name, accountId: context.accountId })
-        return val ? val.value : null
+        return val
+            ? val.value
+            : defaultValue
+                ? defaultValue
+                : null
+
     }
 
     async set(name: string, value: any, context: Context) {
@@ -23,5 +28,6 @@ export class VariablesService {
             .values({ name: name, value: value, accountId: context.accountId })
             .orUpdate(['value'], ['account_id', 'name'])
             .execute()
+        
     }
 }

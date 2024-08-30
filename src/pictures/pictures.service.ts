@@ -40,6 +40,22 @@ export class PicturesService {
         }
     }
 
+    async getOneInBase64(name: string, size: ImageSize = 'small') {
+        let res = await this.getOne(name, size)
+        let buf = await this.readStream(res.file)
+        return buf.toString('base64')
+    }
+
+    async readStream(stream) : Promise<Buffer> {
+        return new Promise((resolve, reject) => {
+            const chunks = [];
+            stream.on('data', (x) => chunks.push(x));
+            stream.on('end', () => resolve(Buffer.concat(chunks)));
+            stream.on('error', reject);
+            stream.on('close', reject);
+        })
+    }
+
     async upload(uploadFile: any) {
         console.log('picturesService.upload', uploadFile)
 

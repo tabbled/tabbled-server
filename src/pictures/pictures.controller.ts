@@ -42,7 +42,9 @@ export class PicturesController {
     @Get(':name')
     @Header('Cache-Control', 'max-age=604800')
     @ApiOperation({ summary: 'Get a thumb picture by name' })
-    async getOne(@Param('name') name: string, @Query('size') size: ImageSize = 'small', @Res() response: Response) {
+    async getOne(@Param('name') name: string,
+                 @Query('size') size: ImageSize = 'small',
+                 @Res() response: Response) {
         try {
             let f = await this.picturesService.getOne(name, size)
             let md = f.stat.metaData || {}
@@ -68,6 +70,36 @@ export class PicturesController {
                 }
             )
         }
+    }
+
+    @Get(':name/base64')
+    @Header('Cache-Control', 'max-age=604800')
+    @ApiOperation({ summary: 'Get a thumb picture by name in base64 string' })
+    async getOneInBase64(@Param('name') name: string,
+                 @Query('size') size: ImageSize = 'small',
+    ) {
+        try {
+            let b64 = await this.picturesService.getOneInBase64(name, size)
+            console.log(b64)
+
+            return {
+                data: b64
+            }
+        } catch (e) {
+        console.error(e.toString())
+        throw new HttpException(
+            {
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                error: e.toString(),
+            },
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            {
+                cause: e.toString(),
+            }
+        )
+    }
+
+
     }
 
     @Delete(':name')

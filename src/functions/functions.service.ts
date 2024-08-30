@@ -259,8 +259,8 @@ class VariablesHelper {
     readonly context: Context
     readonly service: VariablesService
 
-    async get(name: string) : Promise<any> {
-        return await this.service.get(name, this.context)
+    async get(name: string, defaultValue: any) : Promise<any> {
+        return await this.service.get(name, defaultValue, this.context)
     }
 
     async set(name: string, value: any) : Promise<void> {
