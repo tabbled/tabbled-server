@@ -5,7 +5,7 @@ import { Context } from '../entities/context'
 import { FunctionsService } from '../functions/functions.service'
 import { RoomsService } from '../rooms/rooms.service'
 import {
-    DataReindexDto, GetDataManyParamsDto,
+    DataReindexDto, GetDataManyParamsDto, GetFieldsManyDto,
     GetRevisionByIdDto,
     GetRevisionsDto,
     GetRevisionsResponseDto, SystemFields
@@ -159,6 +159,25 @@ export class DataSourceV2Service {
         }
     }
 
+    async getFieldsMany(params: GetFieldsManyDto, context: Context) {
+        console.log(params, context)
+        const rep = this.datasource.getRepository(DatasourceField)
+        let items = await rep
+            .createQueryBuilder()
+            .where(
+                `datasource_alias = :alias AND deleted_at IS NULL`,
+                { alias: params.datasource }
+            )
+            .getMany()
+
+        console.log(items)
+        return {
+            items,
+            count: items.length
+        }
+
+    }
+
     async updateField(queryRunner:QueryRunner, item: DataItem, context: Context) {
         if (!item.data?.fields) {
             return
@@ -219,6 +238,8 @@ export class DataSourceV2Service {
             )
             .execute()
     }
+
+
 
     @OnEvent('config-update.datasource.*', {async: true})
     async handleDataSourceConfigUpdate(data) {

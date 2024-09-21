@@ -66,6 +66,10 @@ export class DataIndexRequestDto {
     ids?: string[]
 }
 
+export class GetFieldsManyDto {
+    datasource: string
+}
+
 export class DataReindexDto extends DataIndexRequestDto{
     dataSourceConfig: DataSourceConfigInterface
 }

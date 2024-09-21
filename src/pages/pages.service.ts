@@ -44,7 +44,24 @@ let pagesMock: PageInterface[] = [
                 properties: {
                     title: "Поставщики",
                     dataset: "products",
-                    height: 500
+                    height: 500,
+                    columns: [{
+                        field: "type.name",
+                        width: 150,
+                        title: "Тип"
+                    },{
+                        field: "group.name",
+                        width: 150,
+                        title: "Группа"
+                    },{
+                        field: "name",
+                        width: 250,
+                        title: "Наименование"
+                    },{
+                        field: "price",
+                        width: 80,
+                        title: "Цена"
+                    }]
                 }
             }
         ],

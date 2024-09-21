@@ -278,6 +278,7 @@ class RequestScriptHelper {
         console.log('script request get, url - ', url, headers)
         return await this.axios.get(url, {
             headers: headers,
+            timeout: 20 * 1000
         })
     }
 
@@ -286,6 +287,7 @@ class RequestScriptHelper {
 
         let config = {
             headers: {},
+            timeout: 20 * 1000
         }
         if (headers && headers instanceof Object) config.headers = headers
 

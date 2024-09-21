@@ -63,7 +63,7 @@ export class DatasourceField {
     @Column({ type: 'varchar', name: 'format' })
     format: string
 
-    @Column({ type: 'varchar', name: 'enum_values' })
+    @Column({ type: 'jsonb', name: 'enum_values' })
     enumValues: object[]
 
     @CreateDateColumn({

@@ -207,6 +207,34 @@ export class DataSourceV2Controller {
         }
     }
 
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
+    @Version(['2'])
+    @Get(':alias/fields')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Get all fields of datasource' })
+    async getFieldsMany(
+        @Param('alias') alias: string,
+        @Req() req: Request,
+    ): Promise<GetDataManyResponseDto> {
+        try {
+            let items = await this.dsService.getFieldsMany({datasource: alias}, this.getContext(req))
+            return {
+                statusCode: 200,
+                items: items.items,
+                count: items.count
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
     getContext(req: Request) : Context {
         return {
             accountId: req['accountId'],
