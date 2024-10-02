@@ -161,16 +161,38 @@ export class DataSourceV2Service {
 
     async getFieldsMany(params: GetFieldsManyDto, context: Context) {
         console.log(params, context)
-        const rep = this.datasource.getRepository(DatasourceField)
-        let items = await rep
-            .createQueryBuilder()
-            .where(
-                `datasource_alias = :alias AND deleted_at IS NULL`,
-                { alias: params.datasource }
-            )
-            .getMany()
 
-        console.log(items)
+        const getFields = async (alias: string) => {
+            const rep = this.datasource.getRepository(DatasourceField)
+            return await rep
+                .createQueryBuilder()
+                .where(
+                    `datasource_alias = :alias AND deleted_at IS NULL`,
+                    { alias: alias }
+                )
+                .getMany()
+        }
+
+        let items = await getFields(params.datasource)
+
+
+        // Need to collect all nested fields in linked datasource
+        if (params.nested) {
+            let links = items.filter(f => f.type === 'link' && f.datasourceReference)
+            for(let i in links) {
+                const field = links[i]
+                let linked = (await getFields(field.datasourceReference))
+                    .filter(f => ['number', 'string', 'bool', 'text', 'enum', 'image', 'datetime', 'date', 'time', 'link']
+                        .includes(f.type))
+
+                linked.forEach(f => {
+                    f.alias = `${field.alias}.${f.alias}`
+                    f.title = `${field.title} -> ${f.title}`
+                    items.push(f)
+                })
+            }
+        }
+
         return {
             items,
             count: items.length
@@ -234,7 +256,7 @@ export class DataSourceV2Service {
             .createQueryBuilder()
             .update(DatasourceField)
             .set(del)
-            .where(`version <> ${item.version}`
+            .where(`version <> ${item.version} AND account_id = '${context.accountId}' AND datasource_alias = '${item.data.alias}'`
             )
             .execute()
     }

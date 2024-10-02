@@ -1,9 +1,10 @@
 import {
+    Body,
     Controller,
     Get, HttpCode,
     HttpException,
     HttpStatus,
-    Param,
+    Param, Patch,
     Req,
     UseGuards,
     Version
@@ -14,7 +15,7 @@ import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 
 import { Context } from "../entities/context";
 import { PagesService } from "./pages.service";
-import { GetByAliasResponseDto, GetManyResponseDto } from "./dto/pages.dto";
+import { GetByAliasResponseDto, GetManyResponseDto, PageInterface } from "./dto/pages.dto";
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -41,6 +42,7 @@ export class PagesController {
                 pages: await this.pagesService.getMany(this.getContext(req))
             }
         } catch (e) {
+            console.error(e)
             throw new HttpException(
                 {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -76,6 +78,36 @@ export class PagesController {
                 page: res
             }
         } catch (e) {
+            console.error(e)
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Patch('/:id')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Patch page parameters by page id' })
+    async patchByAlias(
+        @Req() req: Request,
+        @Param('id') id: number,
+        @Body() body: PageInterface
+    ): Promise<GetByAliasResponseDto> {
+
+        try {
+            await this.pagesService.updateById(id, body, this.getContext(req))
+
+            return {
+                statusCode: 200,
+            }
+        } catch (e) {
+            console.error(e)
             throw new HttpException(
                 {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

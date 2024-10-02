@@ -33,7 +33,6 @@ export class ElementInterface {
     componentName: string
     properties: any
     colSpan: number
-    visible?: (ctx: any) => boolean
 }
 
 export class GetManyResponseDto extends ResponseDto {

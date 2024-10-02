@@ -5,7 +5,7 @@ import {
     HttpException,
     HttpStatus,
     Param,
-    Post,
+    Post, Query,
     Req,
     UseGuards,
     UseInterceptors,
@@ -215,10 +215,11 @@ export class DataSourceV2Controller {
     @ApiOperation({ summary: 'Get all fields of datasource' })
     async getFieldsMany(
         @Param('alias') alias: string,
+        @Query('nested') nested: boolean,
         @Req() req: Request,
     ): Promise<GetDataManyResponseDto> {
         try {
-            let items = await this.dsService.getFieldsMany({datasource: alias}, this.getContext(req))
+            let items = await this.dsService.getFieldsMany({datasource: alias, nested: nested}, this.getContext(req))
             return {
                 statusCode: 200,
                 items: items.items,

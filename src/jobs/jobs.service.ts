@@ -33,7 +33,7 @@ export class JobsService implements OnModuleInit{
     async addJob(job: Job) {
         const cjob = new CronJob(job.cron, async () => {
             await  this.functionHandler(job.functionAlias)
-        });
+        }, );
         this.schedulerRegistry.addCronJob(`${job.id}`, cjob)
         this.logger.log(`Job ${job.id} added for function ${job.functionAlias}`)
         cjob.start()

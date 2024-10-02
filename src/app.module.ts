@@ -42,6 +42,7 @@ import { Variable } from "./variables/variables.entity";
 import { JobsModule } from './jobs/jobs.module';
 import { Job } from "./jobs/jobs.entity";
 import { ScheduleModule } from "@nestjs/schedule";
+import { PageEntity } from "./pages/entities/pages.entity";
 
 @Module({
     imports: [
@@ -74,7 +75,8 @@ import { ScheduleModule } from "@nestjs/schedule";
                 ItemView,
                 DatasourceField,
                 Variable,
-                Job
+                Job,
+                PageEntity
             ],
         }),
         BullModule.forRoot({

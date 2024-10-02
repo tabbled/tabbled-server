@@ -1,70 +1,74 @@
 import { Injectable } from '@nestjs/common';
 import { Context } from "../entities/context";
+import { InjectDataSource } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
+import { PageEntity } from "./entities/pages.entity";
 import { PageInterface } from "./dto/pages.dto";
 
 @Injectable()
 export class PagesService {
-    constructor(/*@InjectDataSource('default')
+    constructor(@InjectDataSource('default')
                 private datasource: DataSource,
-                private eventEmitter: EventEmitter2*/) {
+                /*private eventEmitter: EventEmitter2*/) {
     }
 
     async getMany(context: Context) {
-        console.log(context)
-        return pagesMock
+        let rep = this.datasource.getRepository(PageEntity)
+        const query = rep
+            .createQueryBuilder()
+            .select('id, alias, title, type')
+            .andWhere('account_id = :account AND deleted_at IS NULL', {
+                account: context.accountId
+            })
+
+        return await query.getRawMany()
     }
 
     async getOneByAlias(alias: string, context: Context) {
-        console.log(context)
-        return pagesMock.find(i => i.alias === alias)
+        let rep = this.datasource.getRepository(PageEntity)
+        const query = rep
+            .createQueryBuilder()
+            .andWhere('account_id = :account AND alias = :alias', {
+                account: context.accountId,
+                alias: alias
+            })
+
+        return await query.getOne()
+    }
+
+    async getOneById(id: number, context: Context) {
+        let rep = this.datasource.getRepository(PageEntity)
+        const query = rep
+            .createQueryBuilder()
+            .andWhere('account_id = :account AND id = :id', {
+                account: context.accountId,
+                id: id
+            })
+
+        return await query.getOne()
+    }
+
+    async updateById(id: number, params: PageInterface, context: Context) {
+        let page = await this.getOneById(id, context)
+        if (!page)
+            throw "Not found"
+
+        let n = Object.assign(page, params)
+        n.updatedAt = new Date()
+        n.updatedBy = context.userId
+        delete n.createdAt
+        delete n.createdBy
+        delete n.accountId
+
+        let rep = this.datasource.getRepository(PageEntity)
+        await rep
+            .createQueryBuilder()
+            .update()
+            .set(n)
+            .where('account_id = :account AND id = :id', {
+                account: context.accountId,
+                id: id
+            })
+            .execute()
     }
 }
-
-let pagesMock: PageInterface[] = [
-    {
-        id: "1626752318806429696",
-        alias: "suppliers",
-        title: "Поставщики eee",
-        type: "list",
-        permissions: {
-            "access": "all"
-        },
-        datasets: [{
-            alias: "products",
-            datasource: "products"
-        },{
-            alias: "resources",
-            datasource: "resources"
-        }],
-        elements: [
-            {
-                id: "1770776988399702016",
-                componentName: "TableV2",
-                colSpan: 12,
-                properties: {
-                    title: "Поставщики",
-                    dataset: "products",
-                    height: 500,
-                    columns: [{
-                        field: "type.name",
-                        width: 150,
-                        title: "Тип"
-                    },{
-                        field: "group.name",
-                        width: 150,
-                        title: "Группа"
-                    },{
-                        field: "name",
-                        width: 250,
-                        title: "Наименование"
-                    },{
-                        field: "price",
-                        width: 80,
-                        title: "Цена"
-                    }]
-                }
-            }
-        ],
-        headerActions: []
-    }
-]

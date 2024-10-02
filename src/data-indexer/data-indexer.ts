@@ -62,6 +62,8 @@ export class DataIndexer {
             filterBy = this.convertFilterToSearch(params.filter, allFields)
         }
 
+        await this.validateFieldIsSortable(index, params.sort)
+
 
         let searchParams:SearchParams = {
             sort: params.sort,
@@ -434,5 +436,32 @@ export class DataIndexer {
         let task = await this.searchClient.waitForTask(taskUid)
         if (task.status !== 'succeeded')
             throw task.error
+    }
+
+    async validateFieldIsSortable(index: Index, sort: string[]) : Promise<boolean> {
+        let sortable = await index.getSortableAttributes()
+        let needUpdate = false
+
+        for(const i in sort) {
+            const s = sort[i]
+
+            let field = s.split(':')[0]
+            if (!sortable.includes(field)) {
+                needUpdate = true
+                sortable.push(field)
+            }
+        }
+
+        if (needUpdate) {
+            let taskUid = (await index.updateSortableAttributes(sortable)).taskUid
+            let task = await this.searchClient.waitForTask(taskUid)
+            if (task.status !== 'succeeded') {
+                this.logger.error(`Got error while indexing`)
+                this.logger.error(task.error)
+                throw "Field is not sortable"
+            }
+        }
+
+        return true
     }
 }

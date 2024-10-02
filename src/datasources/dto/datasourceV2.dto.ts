@@ -68,6 +68,7 @@ export class DataIndexRequestDto {
 
 export class GetFieldsManyDto {
     datasource: string
+    nested?: boolean
 }
 
 export class DataReindexDto extends DataIndexRequestDto{
