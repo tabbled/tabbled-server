@@ -3,24 +3,25 @@ import { DataSource } from "typeorm";
 import { Index, MeiliSearch } from "meilisearch";
 import {
     DataReindexDto,
+    DataSourceType,
+    DataSourceV2Dto,
     GetDataManyDto,
-    GetDataManyParamsDto,
-    SystemFields
+    GetDataManyRequestDto
 } from "../datasources/dto/datasourceV2.dto";
 import { Context } from "../entities/context";
 import { DataItem } from "../datasources/entities/dataitem.entity";
-import { DataSourceConfigInterface } from "../datasources/entities/datasource.entity";
-import { FieldConfigInterface } from "../entities/field";
 import * as dayjs from "dayjs";
-import { ConfigItem } from "../config/entities/config.entity";
 import { SearchParams } from "meilisearch/src/types/types";
 import { FilterItemInterface } from "../datasources/dto/datasource.dto";
 import * as utc from "dayjs/plugin/utc";
 import * as timezone from "dayjs/plugin/timezone";
-
 import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
 import { DatasourceField } from "../datasources/entities/field.entity";
+import { IndexerDataAdapter } from "./data-indexer.adapter";
+import { InternalAdapter } from "./internal.adapter";
+import { InternalDbAdapter } from "./internal-db.adapter";
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -31,13 +32,17 @@ export class DataIndexer {
                 private datasource: DataSource) {
         this.searchClient = new MeiliSearch({
             host: configService.get<string>('MAILISEARCH_HOST'),
-            apiKey: configService.get<string>('MAILISEARCH_MASTER_KEY') ,
+            apiKey: configService.get<string>('MAILISEARCH_MASTER_KEY')
         })
+        this.internalAdapter = new InternalAdapter(this.datasource, this.searchClient);
+        this.internalDbAdapter = new InternalDbAdapter(this.datasource, this.searchClient);
     }
 
     private readonly logger = new Logger(DataIndexer.name);
     private readonly searchClient:MeiliSearch = null
     private timezone = 'Europe/Moscow'
+    private readonly internalAdapter: InternalAdapter
+    private readonly internalDbAdapter: InternalDbAdapter
     public setTimezone(val) {
         this.timezone = val
         dayjs.tz.setDefault(this.timezone)
@@ -45,15 +50,23 @@ export class DataIndexer {
 
     public getIndexUid = (alias, context) => `${context.accountId}_${alias}`
 
-    public async getDataMany(params: GetDataManyParamsDto, context: Context) : Promise<GetDataManyDto> {
+    private getAdapter(type: DataSourceType) {
+        switch (type) {
+            case DataSourceType.internal: return this.internalAdapter;
+            case DataSourceType.internalDB: return this.internalDbAdapter;
+            default: return null
+        }
+    }
+
+    public async getDataMany(params: GetDataManyRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context) : Promise<GetDataManyDto> {
         let index:Index
         try {
-            index = await this.searchClient.getIndex(this.getIndexUid(params.dataSourceConfig.alias, context))
+            index = await this.searchClient.getIndex(this.getIndexUid(dataSourceConfig.alias, context))
         } catch (e) {
             throw e
         }
 
-        let dsFields = params.dataSourceConfig.fields
+        let dsFields = dataSourceConfig.fields
         const allFields = new Map(dsFields.map(i => [i.alias, i]))
 
         let filterBy = params.filterBy
@@ -83,13 +96,15 @@ export class DataIndexer {
     }
 
     public async dataReindex(params: DataReindexDto, context: Context) : Promise<number> {
-        if (params.dataSourceConfig.source !== 'internal')
-            throw `DataSource is not an internal source`
+       let adapter: IndexerDataAdapter = this.getAdapter(params.dataSourceConfig.type)
+
+        if (!adapter)
+            throw `DataSource has no ability to index`
 
 
 
         const indexUid = this.getIndexUid(params.dataSourceConfig.alias, context)
-        this.logger.log(`Indexing data to index ${indexUid}, ids: ${params.ids?.join(',')}`, )
+        this.logger.log(`Indexing data for datasource ${params.dataSourceConfig.alias} to index ${indexUid}, ids: ${params.ids?.join(',')}`, )
         let newIndexUid = ""
 
         let index: Index = await this.getIndex(indexUid)
@@ -105,38 +120,11 @@ export class DataIndexer {
             await this.updateIndexSettings(index, params.dataSourceConfig.fields)
         }
 
-        const rep = this.datasource.getRepository(DataItem)
-        let query = rep
-            .createQueryBuilder()
-            .select('data, ' + params.dataSourceConfig.fields.filter(f=>f.isSystem).map(f => f.alias).join(','))
-            .where(
-                `alias = :alias`,
-                { alias: params.dataSourceConfig.alias }
-            )
+        let docs = await adapter.getData(params.dataSourceConfig, context, params.ids)
+        docs = await this.replaceEnumDataToItems(params.dataSourceConfig, docs)
+        docs = await this.replaceLinkedDataToItems(params.dataSourceConfig, docs, context)
 
-        if (params.ids && params.ids.length > 0) {
-            query.andWhere(`id IN (${params.ids.join(',')})`)
-        }
 
-        let items = await query.getRawMany()
-
-        let dsFields = params.dataSourceConfig.fields
-
-        // Get all data source configs for link nesting
-        let linkDataSource: Map<string, DataSourceConfigInterface> = new Map()
-        for (let i in dsFields) {
-            const f = dsFields[i]
-            if (f.type === 'link' && !f.isSystem) {
-                let config = await this.getConfigByAlias(f.datasource)
-                if (config)
-                    linkDataSource.set(f.datasource, config)
-            }
-        }
-
-        let docs = []
-        for (let i in items) {
-            docs.push(await this.prepareItemForIndex(items[i], dsFields, linkDataSource))
-        }
 
         let taskUid = (await index.addDocuments(docs)).taskUid
 
@@ -150,29 +138,102 @@ export class DataIndexer {
 
 
         if (params.ids && params.ids.length > 0) {
-            await this.updateLinkedData(params, context)
+            await this.updateLinkedData(docs, params.dataSourceConfig, context)
         }
 
-        return items.length
+        return docs.length
     }
 
-    public async updateLinkedData(params: DataReindexDto, context: Context) {
-        if (params.dataSourceConfig.source !== 'internal')
-            throw `DataSource is not an internal source`
+    private async replaceEnumDataToItems(ds: DataSourceV2Dto, items: any[]) {
+        let enums = ds.fields.filter(f => f.type === 'enum')
+        if (!enums.length)
+            return items
 
-        if (!params.ids.length)
-            return
+        for(let i in enums) {
+            let field = enums[i]
+            for(let j in items) {
+                let item = items[j]
 
-        const itemsRep = await this.datasource.getRepository(DataItem)
-        let items = await itemsRep
-            .createQueryBuilder()
-            .select('id, data')
-            .where(
-                `alias = :alias AND id IN (${params.ids.join(',')})`,
-                { alias: params.dataSourceConfig.alias }
-            ).getRawMany()
+                if (item[field.alias] === null || item[field.alias] === undefined)
+                    continue
 
-        this.logger.log(`Indexing linked docs to ${params.dataSourceConfig.alias}`)
+                if (field.isMultiple) {
+                    let arr = []
+                    item[field.alias].forEach(d => {
+                        let val = field.enumValues.find(f => f.key === d)
+
+                        arr.push({ id: val ? val.key : d, title: val ? val.title : d })
+
+                    })
+
+                    item[field.alias] = arr
+                } else {
+                    let val = field.enumValues.find(f => f.key === item[field.alias])
+                    item[field.alias] = val ? { id: val.key, title: val.title } : null
+                }
+            }
+        }
+
+        return items
+    }
+
+    private async replaceLinkedDataToItems(ds: DataSourceV2Dto, items: any[], context: Context) {
+        let linksField = ds.fields.filter(f => f.type === 'link')
+        if (!linksField.length)
+            return items
+
+        for(const i in linksField) {
+            const field = linksField[i]
+            if (field.isSystem)
+                continue
+
+            const indexUid = this.getIndexUid(field.datasourceReference, context)
+            const fields = await this.getFieldForLinkIndex(field.datasourceReference)
+            const index = await this.getIndex(indexUid)
+            if (!index) {
+                this.logger.warn(`Index ${indexUid} for add linked data into item`)
+                continue
+            }
+
+            for(let j in items) {
+                items[j][field.alias] = await this.replaceLinkedDataToItem(items[j][field.alias], index, fields)
+            }
+
+        }
+
+        return items
+    }
+
+    private async replaceLinkedDataToItem(id: string, index: Index, fields: string[]) {
+        if (typeof id === 'string') {
+            let doc
+            try {
+                doc = await index.getDocument(id, {
+                    fields: fields
+                })
+                return doc
+            } catch (e) {
+                this.logger.warn(`Document with id ${id} not found in index ${index.uid}`)
+                return {
+                    id: id
+                }
+            }
+
+
+        } else {
+            this.logger.warn(`Item id must be a type of string`)
+            return {
+                id: id
+            }
+        }
+    }
+
+    public async updateLinkedData(items: any[], ds: DataSourceV2Dto, context: Context) {
+        let adapter: IndexerDataAdapter = this.getAdapter(ds.type)
+        if (!adapter)
+            throw `DataSource is not an internal or internal-db source`
+
+        this.logger.log(`Indexing linked docs to ${ds.alias}`)
 
 
         let rep = this.datasource.getRepository(DatasourceField)
@@ -181,18 +242,13 @@ export class DataIndexer {
             .select('datasource_alias, alias as field_alias')
             .where(
                 `datasource_ref = :ref`,
-                { ref: params.dataSourceConfig.alias }
+                { ref: ds.alias }
             )
             .getRawMany()
 
-
-
         for(let i in links) {
-            let link = links[i]
-            await this.updateLinkItem(items, link, context)
+            await this.updateLinkItem(items, links[i], context)
         }
-
-
     }
 
     private async updateLinkItem(items: any[], link: {datasource_alias: string, field_alias: string}, context: Context) {
@@ -207,8 +263,6 @@ export class DataIndexer {
 
         for(let i in items) {
             let item = items[i]
-
-
 
             let linkedItems = await rep.createQueryBuilder()
                 .select('id')
@@ -238,113 +292,22 @@ export class DataIndexer {
     }
 
 
-
-    private async prepareItemForIndex(item: any, fields: FieldConfigInterface[], linkDs: Map<string, DataSourceConfigInterface>): Promise<object> {
-        let o = {}
-
-        for(let i in fields) {
-            const field = fields[i]
-            let val = field.isSystem ? item[field.alias] : item.data[field.alias]
-
-            if(['datetime', 'time', 'date'].includes(field.type)) {
-                val = val ? dayjs(val).utc(false).valueOf() : null
-            }
-
-            if (field.type === 'number') {
-                val = Number(val)
-            }
-
-            if (field.type === 'link' && !field.isSystem) {
-                val = await this.getLinkItemForIndex(val, field, linkDs)
-            }
-
-            if (!field.isMultiple && field.type === 'string' ) {
-                val = val !== undefined && val !== null ? String(val) : ""
-            }
-
-            o[field.alias] = val
-        }
-        return o
-    }
-
-    private async getLinkItemForIndex(id: string | string[], field: FieldConfigInterface, linkDs: Map<string, DataSourceConfigInterface>): Promise<object | null> {
-        if (!id)
-            return null
-
-        let ds = linkDs.get(field.datasource)
-        if (!ds) return {
-            id
-        }
-
-        const rep = this.datasource.getRepository(DataItem)
-
-        let val = <Array<string>>id
-        if (field.isMultiple) {
-            if (!Array.isArray(id))
-                val = [id]
-
-            if (!val.length)
-                return []
-
-            let items = await rep
-                .createQueryBuilder()
-                .select('data')
-                .where(
-                    `alias = :alias AND id in (${val.join(',')})`,
-                    { alias: ds.alias }
-                )
-                .getRawMany()
-
-            val = items.map(i => i.data)
-        } else {
-            let item = await rep
-                .createQueryBuilder()
-                .select('data')
-                .where(
-                    `alias = :alias AND id = :id`,
-                    { alias: ds.alias, id }
-                )
-                .getRawOne()
-
-            val = item.data
-        }
-
-        return val
-    }
-
-    private async getConfigByAlias(alias: string): Promise<DataSourceConfigInterface> {
-        const rep = this.datasource.getRepository(ConfigItem)
-        let item = await rep
-            .createQueryBuilder()
-            .where(
-                `alias = 'datasource' AND (data ->> 'alias')::varchar = :alias and deleted_at IS NULL`,
-                { alias: alias }
-            )
-            .getOne()
-
-        if (item) {
-            item.data.fields.push(...SystemFields)
-        }
-
-        return item ? item.data : null
-    }
-
-    private prepareItemForUser(item: any, fields: Map<string, FieldConfigInterface>, timezone = this.timezone):DataItem {
+    private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, timezone = this.timezone):DataItem {
         let o = item
         Object.keys(item).forEach(alias => {
-            if (fields.has(alias) && ['datetime', 'time', 'date'].includes(fields.get(alias).type)) {
+            if (fields.has(alias) && ['datetime', 'date'].includes(fields.get(alias).type)) {
                 item[alias] = item[alias] ? dayjs(Number(item[alias])).tz(timezone).format() : null
             }
         })
         return o
     }
 
-    private convertFilterToSearch(filter: FilterItemInterface[], fields: Map<string, FieldConfigInterface>) {
+    private convertFilterToSearch(filter: FilterItemInterface[], fields: Map<string, DatasourceField>) {
         let query:string = ""
         const andWhere = (where) => {
             if (where) query += query.length > 0 ? ` AND ${where}` : where
         }
-        const convertValue = (val, field: FieldConfigInterface) => {
+        const convertValue = (val, field: DatasourceField) => {
             if(['datetime', 'time', 'date'].includes(field.type)) {
                 return val ? dayjs(val).utc(false).valueOf() : null
             }
@@ -421,10 +384,15 @@ export class DataIndexer {
             throw task.error
     }
 
-    async updateIndexSettings(index: Index, fields: FieldConfigInterface[]) {
+    async updateIndexSettings(index: Index, fields: DatasourceField[]) {
         let sort = fields.filter(f=>f.sortable).map(f=>f.alias)
         let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
         let search = fields.filter(f=>f.searchable).map(f=>f.alias)
+
+        // Need add filterable link field id to index linked data after update linked item
+        fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
+            filter.push(`${i.alias}.id`)
+        })
 
         let taskUid = (await index.updateSettings({
             sortableAttributes: sort,
@@ -463,5 +431,19 @@ export class DataIndexer {
         }
 
         return true
+    }
+
+    async getFieldForLinkIndex(alias): Promise<string[]> {
+        let rep = this.datasource.getRepository(DatasourceField)
+        let fields = await rep.createQueryBuilder()
+            .select('alias')
+            .where(`datasource_alias = :alias AND deleted_at IS NULL and type <> 'table'`,
+                { alias: alias})
+            .getRawMany()
+
+        let f = fields.map(f=> f.alias)
+        f.push('id')
+        return f
+
     }
 }

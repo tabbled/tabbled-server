@@ -4,11 +4,14 @@ import {
     Body,
     Param,
     HttpException,
-    HttpStatus,
-} from '@nestjs/common'
+    HttpStatus, Req, UseGuards
+} from "@nestjs/common";
 import { FunctionsService } from './functions.service'
 import { ApiOperation } from '@nestjs/swagger'
 import { RunScriptDto } from "./dto/call-function.dto";
+import { Request } from "express";
+import { Context } from "../entities/context";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller('functions')
 export class FunctionsController {
@@ -38,17 +41,19 @@ export class FunctionsController {
         }
     }
 
+    @UseGuards(JwtAuthGuard)
     @Post('script/run')
     @ApiOperation({ summary: 'Call a script with context' })
-    async runScript(@Body() body: RunScriptDto) {
+    async runScript(@Req() req: Request,
+                    @Body() body: RunScriptDto) {
         try {
+            console.log(this.getContext(req))
             let res = await this.functionsService.runScript({
-                context: body.context,
+                context: Object.assign(this.getContext(req), body.context),
                 script: body.script,
                 room: body.room
             })
 
-            console.log(res)
             return {
                 success: true,
                 data: res,
@@ -58,6 +63,13 @@ export class FunctionsController {
                 success: false,
                 error: e.toString()
             }
+        }
+    }
+
+    getContext(req: Request) : Context {
+        return {
+            accountId: req['accountId'],
+            userId: req['userId'],
         }
     }
 }

@@ -3,9 +3,9 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
-    PrimaryGeneratedColumn,
-} from 'typeorm'
-import { FieldType } from "../../entities/field";
+    PrimaryGeneratedColumn
+} from "typeorm";
+import {FieldType, EnumValue} from "../dto/datasourceV2.dto";
 
 @Entity({ name: 'datasource_fields' })
 export class DatasourceField {
@@ -13,19 +13,19 @@ export class DatasourceField {
     id: string
 
     @Column({ type: 'int', name: 'account_id' })
-    accountId: number
+    accountId?: number
 
     @Column({ type: 'int', name: 'version' })
-    version: number
+    version?: number
 
     @Column({ type: 'varchar', name: 'alias' })
     alias: string
 
     @Column({ type: 'varchar', name: 'datasource_alias' })
-    datasourceAlias: string
+    datasourceAlias?: string
 
     @Column({ type: 'bigint', name: 'datasource_id' })
-    datasourceId: string
+    datasourceId?: string
 
     @Column({ type: 'varchar', name: 'type' })
     type: FieldType
@@ -34,13 +34,13 @@ export class DatasourceField {
     title: string
 
     @Column({ type: 'boolean', name: 'searchable' })
-    searchable: boolean
+    searchable?: boolean
 
     @Column({ type: 'boolean', name: 'filterable' })
-    filterable: boolean
+    filterable?: boolean
 
     @Column({ type: 'boolean', name: 'sortable' })
-    sortable: boolean
+    sortable?: boolean
 
     @Column({ type: 'boolean', name: 'is_multiple' })
     isMultiple?: boolean
@@ -52,43 +52,45 @@ export class DatasourceField {
     datasourceReference?: string
 
     @Column({ type: 'boolean', name: 'autoincrement' })
-    autoincrement: boolean
+    autoincrement?: boolean
 
-    @Column({ type: 'boolean', name: 'required' })
-    required: boolean
+    @Column({ type: 'boolean', name: 'nullable' })
+    isNullable?: boolean
 
     @Column({ type: 'int', name: 'precision' })
-    precision: number
+    precision?: number
 
     @Column({ type: 'varchar', name: 'format' })
-    format: string
+    format?: string
 
     @Column({ type: 'jsonb', name: 'enum_values' })
-    enumValues: object[]
+    enumValues?: EnumValue[]
 
     @CreateDateColumn({
         type: 'timestamp',
         name: 'created_at',
         default: () => 'CURRENT_TIMESTAMP(3)',
     })
-    public createdAt: Date
+    public createdAt?: Date
 
     @UpdateDateColumn({
         type: 'timestamp',
         name: 'updated_at',
         default: () => 'CURRENT_TIMESTAMP(3)',
     })
-    public updatedAt: Date
+    public updatedAt?: Date
 
     @Column({ type: 'timestamp', name: 'deleted_at' })
     public deletedAt?: Date
 
     @Column({ type: 'int', name: 'created_by' })
-    public createdBy: number
+    public createdBy?: number
 
     @Column({ type: 'int', name: 'updated_by' })
-    public updatedBy: number
+    public updatedBy?: number
 
     @Column({ type: 'int', name: 'deleted_by' })
     public deletedBy?: number
+
+    public isSystem?: boolean
 }

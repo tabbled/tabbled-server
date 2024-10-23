@@ -59,6 +59,11 @@ export class PagesService {
         delete n.createdAt
         delete n.createdBy
         delete n.accountId
+        delete n.deletedAt
+        delete n.deletedBy
+        n.version++
+
+        console.log(n)
 
         let rep = this.datasource.getRepository(PageEntity)
         await rep

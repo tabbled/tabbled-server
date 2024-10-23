@@ -1,8 +1,9 @@
 import { Context } from "../entities/context";
-import { DataSourceConfigInterface } from "../datasources/entities/datasource.entity";
+import { DataSourceV2Dto } from "../datasources/dto/datasourceV2.dto";
 
 export class DataIndexJob {
     context: Context
-    datasource: DataSourceConfigInterface
+    datasource: DataSourceV2Dto
     ids?: string[]
 }
+

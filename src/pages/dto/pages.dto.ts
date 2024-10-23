@@ -5,6 +5,9 @@ export class ResponseDto {
 }
 
 export type AccessType = 'all' | 'roles' | 'nobody'
+export enum Access {
+    'canView' = 'canView'
+}
 
 export class PageInterface {
     id: string
@@ -13,8 +16,10 @@ export class PageInterface {
     elements: ElementInterface[]
     headerActions: PageActionInterface[]
     permissions: {
-        access: AccessType,
-        accessRoles?: string[],
+        [key in Access]: {
+            type: AccessType
+            roles?: string[]
+        }
     }
     type: 'edit' | 'list' | 'dashboard' | 'select'
     datasets: {

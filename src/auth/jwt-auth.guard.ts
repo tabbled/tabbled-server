@@ -43,6 +43,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             request.username = payload.username
             request.userId = Number(payload.userId)
 
+
+
             let user = await this.userService.getSettings(payload.userId)
 
             if (!user) return false

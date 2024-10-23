@@ -59,6 +59,7 @@ export interface EnumValuesInterface {
 }
 
 export interface FieldConfigInterface {
+    id: string
     title: string // Using in table and editor titles
     alias: string // Using in calculations
     type: FieldType

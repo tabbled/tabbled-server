@@ -9,24 +9,25 @@ import { Context } from '../entities/context'
 import * as process from 'process'
 import { DataSourcesService } from '../datasources/datasources.service'
 import { AggregationsService } from '../aggregations/aggregations.service'
-import * as Sentry from '@sentry/node'
 import { UsersService } from '../users/users.service'
-import { RoomsService } from "../rooms/rooms.service";
 import { VariablesService } from "../variables/variables.service";
+import {DataSourceV2Service } from "../datasources/datasourceV2.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 @Injectable()
 export class FunctionsService {
     constructor(
         @Inject(forwardRef(() => DataSourcesService))
         private dataSourcesService: DataSourcesService,
+        private dataSourceV2Service: DataSourceV2Service,
         @InjectRepository(ConfigItem)
         private configRepository: Repository<ConfigItem>,
         @InjectDataSource('default')
         private datasource: DataSource,
         private userService: UsersService,
         private aggService: AggregationsService,
-        private rooms: RoomsService,
-        private variables: VariablesService
+        private variables: VariablesService,
+        private eventEmitter: EventEmitter2
     ) {}
 
     async getByAlias(alias: string) {
@@ -106,6 +107,7 @@ export class FunctionsService {
         )
         const usr = new UserScriptHelper(this.userService, params.context)
         const vars = new VariablesHelper(this.variables, params.context)
+        const ds2 = new DataSourceV2ScriptHelper(this.dataSourceV2Service, params.context)
 
         const vm = new NodeVM({
             timeout: 5000,
@@ -115,6 +117,7 @@ export class FunctionsService {
             sandbox: {
                 ctx: params.context,
                 dataSources: dsHelper,
+                datasource: ds2,
                 request: requestHelper,
                 utilities: utils,
                 aggregations: agg,
@@ -125,12 +128,26 @@ export class FunctionsService {
 
         if(params.room) {
             vm.on('console.log',  (...args) => {
-                this.rooms.logToRoom({
+                console.log("<<<< console.log", this.eventEmitter)
+
+                this.eventEmitter.emit(`functions.logs`, {
                     room: params.room,
                     level: "log",
                     message: args
                 })
             })
+
+            vm.on('console.error',  (...args) => {
+                console.log("<<<< console.error", this.eventEmitter)
+
+                this.eventEmitter.emit(`functions.logs`, {
+                    room: params.room,
+                    level: "error",
+                    message: args
+                })
+            })
+
+
         }
 
         if (!!params.vmConsole) vm.on('console.log', params.vmConsole)
@@ -140,26 +157,26 @@ export class FunctionsService {
         let res = null
         try {
             res = await vm.run(params.script)
+            return res instanceof Promise ? await res : res
         } catch (e) {
             console.error(`Run script error: `, e)
             if (!!params.vmConsole) params.vmConsole(e.toString())
 
             if(params.room) {
-                this.rooms.logToRoom({
+                this.eventEmitter.emit(`functions.logs`, {
                     room: params.room,
                     level: "error",
                     message: e.toString()
                 })
             }
 
-            Sentry.captureException(e)
             throw `${e.toString()}`
         } finally {
             if (!!params.vmConsole) params.vmConsole('Function finished')
             process.off('uncaughtException', uncaughtException)
         }
 
-        let rooms = this.rooms
+        let ee = this.eventEmitter
 
         function uncaughtException(err) {
             console.error('Asynchronous error caught.', err.toString())
@@ -168,17 +185,13 @@ export class FunctionsService {
             }
 
             if(params.room) {
-                rooms.logToRoom({
+                ee.emit(`functions.logs`, {
                     room: params.room,
                     level: "error",
                     message: err.toString()
                 })
             }
-
-            Sentry.captureException(err)
         }
-
-        return res instanceof Promise ? await res : res
     }
 }
 
@@ -198,7 +211,29 @@ class DataSourcesScriptHelper {
     readonly context: Context
 
     async getByAlias(alias: string) {
-        return await this.dataSourcesService.getByAlias(alias, this.context)
+        console.log('getByAliasV2', alias)
+        try {
+            return await this.dataSourcesService.getByAlias(alias, this.context)
+        } catch (e) {
+            console.error(e)
+        }
+
+
+    }
+}
+
+class DataSourceV2ScriptHelper {
+    constructor(dataSourcesService: DataSourceV2Service, context: Context) {
+        this.service = dataSourcesService
+        this.context = context
+    }
+
+    private readonly service: DataSourceV2Service
+    private readonly context: Context
+
+    async getByAlias(alias: string) {
+        console.log('getByAliasV2', alias)
+        return await this.service.getDataSource(alias, this.context)
     }
 }
 
@@ -221,7 +256,6 @@ class AggregationScriptHelper {
             return await this.aggService.conduct(params, this.context)
         } catch (e) {
             console.error(e)
-            Sentry.captureException(e)
             if (this.vmConsole) this.vmConsole(e.toString())
         }
     }
@@ -231,7 +265,6 @@ class AggregationScriptHelper {
             return await this.aggService.reverse(params, this.context)
         } catch (e) {
             console.error(e)
-            Sentry.captureException(e)
             if (this.vmConsole) this.vmConsole(e.toString())
         }
     }
@@ -299,7 +332,6 @@ class RequestScriptHelper {
             return res.data
         } catch (e) {
             console.error(e)
-            Sentry.captureException(e)
             throw new Error('Error while execution script: ' + e.toString())
         }
     }

@@ -27,10 +27,12 @@ export class RoomsGateway
 
     @SubscribeMessage('rooms/join')
     join(@MessageBody() rooms: string[], @ConnectedSocket() client: Socket) {
+        console.log("rooms/join")
         client.join(rooms)
+        console.log(client.rooms)
     }
 
-    @SubscribeMessage('rooms/join')
+    @SubscribeMessage('rooms/leave')
     leave(@MessageBody() room: string, @ConnectedSocket() client: Socket) {
         client.leave(room)
     }
@@ -53,6 +55,7 @@ export class RoomsGateway
             }
         }
 
+        console.log(client.rooms)
         //await client.join('updates')
     }
 

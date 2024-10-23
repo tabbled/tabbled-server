@@ -130,6 +130,7 @@ export class DataSourcesService {
     }
 
     async getByAlias(alias: string, context: Context) {
+        console.log('getByAlias')
         let config = await this.getConfig(alias)
 
         if (config.source !== 'internal') {

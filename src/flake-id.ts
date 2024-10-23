@@ -63,3 +63,7 @@ export class FlakeId {
         return id.readBigInt64BE(0)
     }
 }
+
+export function flakeId(id?) {
+    return (new FlakeId(id)).generateId()
+}

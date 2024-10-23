@@ -1,11 +1,11 @@
 import {
     Body,
-    Controller,
+    Controller, Delete,
     Get, HttpCode,
     HttpException,
     HttpStatus,
     Param,
-    Post, Query,
+    Post, Put, Query,
     Req,
     UseGuards,
     UseInterceptors,
@@ -18,10 +18,16 @@ import { DataSourceV2Service } from "./datasourceV2.service";
 import {
     DataIndexRequestDto,
     DataIndexResponseDto,
+    DeleteDataSourceDataRequestDto,
     GetDataManyRequestDto,
     GetDataManyResponseDto,
     GetManyResponseDto,
-    GetRevisionsResponseDto
+    GetRevisionsResponseDto,
+    InsertDataSourceRequestDto,
+    InsertDataSourceResponseDto,
+    ResponseDto,
+    UpsertDataSourceDataRequestDto,
+    UpsertDataSourceDataResponseDto
 } from "./dto/datasourceV2.dto";
 import { Context } from "../entities/context";
 import { DataSourceInterceptor } from "./datasourceV2.interceptor";
@@ -46,23 +52,9 @@ export class DataSourceV2Controller {
         @Body() body: GetDataManyRequestDto,
         @Req() req: Request,
     ): Promise<GetDataManyResponseDto> {
-        let config = req['datasource.config']
-
-        if (config.source !== 'internal') {
-            throw new HttpException(
-                {
-                    success: false,
-                    statusCode: HttpStatus.BAD_REQUEST,
-                    error: `DataSource ${alias} is not an internal source`
-                }, HttpStatus.BAD_REQUEST)
-        }
-
         let res
         try {
-             res = await this.dsService.getDataMany({
-                ...body,
-                dataSourceConfig: config
-            }, this.getContext(req))
+             res = await this.dsService.getDataMany(alias, body, this.getContext(req))
         } catch (e) {
             throw new HttpException(
                 {
@@ -71,9 +63,6 @@ export class DataSourceV2Controller {
                 }, HttpStatus.INTERNAL_SERVER_ERROR
             )
         }
-
-
-
 
         return {
             statusCode: 200,
@@ -96,10 +85,9 @@ export class DataSourceV2Controller {
     ): Promise<DataIndexResponseDto> {
 
         let config = req['datasource.config']
-        if (config.source !== 'internal') {
+        if (config.type !== 'internal' || config.type !== 'internal-db') {
             throw new HttpException(
                 {
-                    success: false,
                     statusCode: HttpStatus.BAD_REQUEST,
                     error: `DataSource ${alias} is not an internal source`
                 }, HttpStatus.BAD_REQUEST)
@@ -208,6 +196,33 @@ export class DataSourceV2Controller {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Get('')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Get many datasource' })
+    async getManyV2(
+        @Body() body: GetDataManyRequestDto,
+        @Req() req: Request,
+    ): Promise<GetManyResponseDto> {
+        try {
+            let items = await this.dsService.getManyV2(this.getContext(req))
+            return {
+                statusCode: 200,
+                items: items.items,
+                count: items.count
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
     @UseInterceptors(DataSourceInterceptor)
     @Version(['2'])
     @Get(':alias/fields')
@@ -224,6 +239,160 @@ export class DataSourceV2Controller {
                 statusCode: 200,
                 items: items.items,
                 count: items.count
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Post('')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Insert a new datasource' })
+    async insertDataSource(
+        @Req() req: Request,
+        @Body() body: InsertDataSourceRequestDto
+    ): Promise<InsertDataSourceResponseDto> {
+        if (body.type === 'internal')
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_ACCEPTABLE,
+                    error: "Datasource with internal type is not allowed in api v2",
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        try {
+            let data = await this.dsService.insertDataSource(body, this.getContext(req))
+
+            return {
+                id: data.id,
+                statusCode: HttpStatus.OK
+            }
+        } catch (e) {
+        throw new HttpException(
+            {
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                error: e.toString(),
+            },
+            HttpStatus.INTERNAL_SERVER_ERROR
+        )
+    }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Put('/:alias')
+    @HttpCode(200)
+    @UseInterceptors(DataSourceInterceptor)
+    @ApiOperation({ summary: 'Update datasource by alias' })
+    async updateDataSource(
+        @Req() req: Request,
+        @Param('alias') alias: string,
+        @Body() body: InsertDataSourceRequestDto
+    ): Promise<InsertDataSourceResponseDto> {
+        let config = req['datasource.config']
+        if (config.type !== 'internal-db')
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_ACCEPTABLE,
+                    error: "Datasource with type internal-db only allowed to update in api v2",
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        try {
+            let data = await this.dsService.updateDataSource(alias, body, this.getContext(req))
+            return {
+                id: data.id,
+                statusCode: HttpStatus.OK
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Put('/:alias/data')
+    @HttpCode(200)
+    @UseInterceptors(DataSourceInterceptor)
+    @ApiOperation({ summary: 'Update items in datasource' })
+    async upsertDataSourceItems(
+        @Req() req: Request,
+        @Param('alias') alias: string,
+        @Body() body: UpsertDataSourceDataRequestDto
+    ): Promise<UpsertDataSourceDataResponseDto> {
+        let config = req['datasource.config']
+        if (config.type !== 'internal-db')
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_ACCEPTABLE,
+                    error: "Datasource with type internal-db only allowed to update items in api v2",
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        try {
+            let data = await this.dsService.upsertDataSourceItems(alias, body, this.getContext(req))
+            return {
+                statusCode: HttpStatus.OK,
+                items: data
+            }
+        } catch (e) {
+            if (e instanceof Object) {
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: e,
+                    },
+                    HttpStatus.BAD_REQUEST
+                )
+            } else
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Delete('/:alias/data')
+    @HttpCode(200)
+    @UseInterceptors(DataSourceInterceptor)
+    @ApiOperation({ summary: 'Delete items in datasource by id or condition' })
+    async deleteDataSourceItems(
+        @Req() req: Request,
+        @Param('alias') alias: string,
+        @Body() body: DeleteDataSourceDataRequestDto
+    ): Promise<ResponseDto> {
+        let config = req['datasource.config']
+        if (config.type !== 'internal-db')
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_ACCEPTABLE,
+                    error: "Datasource with type internal-db only allowed to delete items in api v2",
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        try {
+            await this.dsService.deleteDataSourceItems(alias, body, this.getContext(req))
+            return {
+                statusCode: HttpStatus.OK
             }
         } catch (e) {
             throw new HttpException(

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Server } from 'socket.io'
 import { Context } from '../entities/context'
+import { OnEvent } from "@nestjs/event-emitter";
 
 export class UpdateMessage {
     type: 'data' | 'config'
@@ -33,16 +34,11 @@ export class RoomsService {
         this.server.emit('updates', message)
     }
 
-    logToRoom(params: {
-        room: string,
-        level: 'log' | 'error',
-        message: any[]
-        payload?: any
-
-    }) {
-        this.server.emit(params.room, {
-            level: params.level,
-            message: params.message
+    @OnEvent('functions.logs', {async: false})
+    onFunctionLogs(data) {
+        this.server.emit(data.room, {
+            level: data.level,
+            message: data.message
         })
     }
 }

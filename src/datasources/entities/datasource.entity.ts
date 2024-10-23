@@ -34,6 +34,7 @@ export interface EventHandlerInterface {
     event: DataSourceEvent
     handler: HandlerInterface
 }
+
 export interface HandlerInterface {
     type: HandlerType
     script?: string
@@ -448,8 +449,6 @@ export class InternalDataSource {
             query.andWhere(`account_id = ${this.context.accountId}`)
         }
 
-        console.log('getByIdRaw', query.getQuery())
-
         return await query.getOne()
     }
 
@@ -485,7 +484,8 @@ export class InternalDataSource {
             await queryRunner.commitTransaction()
 
             this.eventEmitter.emit(`data-update.${this.config.alias}.inserted`, {
-                item,
+                ids: [item.id],
+                alias: this.config.alias,
                 context: this.context
             })
         } catch (e) {
@@ -498,7 +498,7 @@ export class InternalDataSource {
         if (invokeEvents) {
             await this.invokeEvents('onAdd', {
                 old: null,
-                new: item,
+                new: item
             })
         }
 
@@ -551,7 +551,8 @@ export class InternalDataSource {
             await queryRunner.commitTransaction()
 
             this.eventEmitter.emit(`data-update.${this.config.alias}.updated`, {
-                item,
+                ids: [item.id],
+                alias: this.config.alias,
                 context: this.context
             })
         } catch (e) {
@@ -725,7 +726,8 @@ export class InternalDataSource {
             await queryRunner.commitTransaction()
 
             this.eventEmitter.emit(`data-update.${this.config.alias}.removed`, {
-                item,
+                ids: [item.id],
+                alias: this.config.alias,
                 context: this.context
             })
         } catch (e) {
@@ -911,7 +913,8 @@ export class InternalDataSource {
             await queryRunner.commitTransaction()
 
             this.eventEmitter.emit(`data-update.${this.config.alias}.imported`, {
-                context: this.context
+                context: this.context,
+                alias: this.config.alias,
             })
         } catch (e) {
             await queryRunner.rollbackTransaction()
