@@ -4,9 +4,9 @@ import { Index, MeiliSearch } from "meilisearch";
 import {
     DataReindexDto,
     DataSourceType,
-    DataSourceV2Dto,
+    DataSourceV2Dto, ExportDataRequestDto,
     GetDataManyDto,
-    GetDataManyRequestDto
+    GetDataManyRequestDto, GetTotalDataManyRequestDto, GetTotalsResponseDto
 } from "../datasources/dto/datasourceV2.dto";
 import { Context } from "../entities/context";
 import { DataItem } from "../datasources/entities/dataitem.entity";
@@ -21,6 +21,7 @@ import { DatasourceField } from "../datasources/entities/field.entity";
 import { IndexerDataAdapter } from "./data-indexer.adapter";
 import { InternalAdapter } from "./internal.adapter";
 import { InternalDbAdapter } from "./internal-db.adapter";
+import * as _ from "lodash";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -66,6 +67,7 @@ export class DataIndexer {
             throw e
         }
 
+
         let dsFields = dataSourceConfig.fields
         const allFields = new Map(dsFields.map(i => [i.alias, i]))
 
@@ -90,9 +92,93 @@ export class DataIndexer {
         let res = await index.search(params.query, searchParams)
 
         return {
-            items: res.hits.map(i=> this.prepareItemForUser(i, allFields)),
+            items: res.hits.map(i=> this.prepareItemForUser(i, allFields, params.fields)),
             count: res.estimatedTotalHits
         }
+    }
+
+    async getTotals(params: GetTotalDataManyRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context): Promise<GetTotalsResponseDto> {
+        if (!params.agg || !params.agg.length) {
+            return undefined
+        }
+        let index:Index
+        try {
+            index = await this.searchClient.getIndex(this.getIndexUid(dataSourceConfig.alias, context))
+        } catch (e) {
+            throw e
+        }
+
+        let vals = {}
+
+        let filterBy = params.filterBy
+        const allFields = new Map(dataSourceConfig.fields.map(i => [i.alias, i]))
+
+        if (!filterBy && params.filter) {
+            filterBy = this.convertFilterToSearch(params.filter, allFields)
+        }
+
+        let searchParams:SearchParams = {
+            attributesToSearchOn: params.searchBy,
+            filter: filterBy,
+            limit: 3000,
+            attributesToRetrieve: params.agg.map(f => f.field)
+        }
+
+        let res = (await index.search(params.query, searchParams)).hits
+
+        for(let i in params.agg) {
+            let a = params.agg[i]
+            switch (a.func) {
+                case "sum": vals[a.field] = _.sumBy(res, s => _.get(s, a.field)); break;
+                case "avg": vals[a.field] = _.meanBy(res, s => _.get(s, a.field)); break;
+                case "min": let min = _.minBy(res, s => _.get(s, a.field));
+                    vals[a.field] = min ? _.get(min, a.field) : null
+                    break;
+                case "max":
+                    let max = _.maxBy(res, s => _.get(s, a.field));
+                    vals[a.field] = max ? _.get(max, a.field) : null
+                    break;
+                default:
+                    vals[a.field] = 0
+            }
+        }
+        return {
+            totals: vals
+        }
+    }
+
+    public async exportData(params: ExportDataRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context) {
+        let data = await this.getDataMany({
+            ...params,
+            limit: 5000,
+            offset: 0
+        }, dataSourceConfig, context)
+
+        console.log(data.items)
+
+        return {
+            file: this.arrayToCsv(data.items, params.fields)
+        }
+    }
+
+    private arrayToCsv(data, fields) {
+        let d = ''
+        fields.forEach(field => {
+            d += `${field};`
+        })
+        d += '\n'
+
+        data.forEach((row) => {
+            let strRow = ''
+            fields.forEach(field => {
+                let val = _.get(row, field)
+
+                strRow += `${val ? val.toString() : ''};`
+            })
+            strRow += '\n'
+            d += strRow
+        })
+        return Buffer.from(d).toString('base64')
     }
 
     public async dataReindex(params: DataReindexDto, context: Context) : Promise<number> {
@@ -292,11 +378,13 @@ export class DataIndexer {
     }
 
 
-    private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, timezone = this.timezone):DataItem {
+    private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, fieldsToSelect: string[], timezone = this.timezone):DataItem {
         let o = item
-        Object.keys(item).forEach(alias => {
-            if (fields.has(alias) && ['datetime', 'date'].includes(fields.get(alias).type)) {
-                item[alias] = item[alias] ? dayjs(Number(item[alias])).tz(timezone).format() : null
+        fieldsToSelect.forEach(f => {
+            if (fields.has(f) && ['datetime', 'date'].includes(fields.get(f).type)) {
+                _.set(item, f, _.has(item, f) && _.get(item, f) !== null
+                    ? dayjs(Number(_.get(item, f))).tz(timezone).format()
+                    : null )
             }
         })
         return o

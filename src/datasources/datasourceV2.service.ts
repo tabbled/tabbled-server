@@ -16,7 +16,7 @@ import {
     InsertDataSourceRequestDto,
     SystemFields,
     UpsertDataSourceDataRequestDto,
-    FieldType
+    FieldType, ExportDataRequestDto
 } from "./dto/datasourceV2.dto";
 import { DataItem, Revision } from "./entities/dataitem.entity";
 import { User } from "../users/entities/user.entity";
@@ -147,14 +147,7 @@ export class DataSourceV2Service {
             .getOne()
 
         if (item) {
-            const rep = this.datasource.getRepository(DatasourceField)
-            item.fields = await rep
-                .createQueryBuilder()
-                .where(
-                    `datasource_alias = :alias AND deleted_at IS NULL`,
-                    { alias: alias }
-                )
-                .getMany()
+            item.fields = (await this.getFieldsMany({datasource: alias, nested: true})).items
         }
 
         if (item) {
@@ -212,9 +205,16 @@ export class DataSourceV2Service {
         }
     }
 
-    async getFieldsMany(params: GetFieldsManyDto, context: Context) {
-        console.log(params, context)
+    async isExists(alias: string, context: Context) {
+        const rep = this.datasource.getRepository(DatasourceV2Entity)
+        return await rep.createQueryBuilder()
+            .where(`alias = :alias AND account_id = :account`,
+                { alias: alias,
+                account: context.accountId})
+            .getExists()
+    }
 
+    async getFieldsMany(params: GetFieldsManyDto) {
         const getFields = async (alias: string) => {
             const rep = this.datasource.getRepository(DatasourceField)
             return await rep
@@ -407,7 +407,6 @@ export class DataSourceV2Service {
     }
 
     async updateDataSource(alias: string, ds: InsertDataSourceRequestDto, context: Context) {
-        console.log(alias)
         let currentDs = await this.getConfigByAlias(alias)
         if (!currentDs) {
             throw `DataSource with alias '${alias}' doesn't exist`
@@ -664,6 +663,16 @@ export class DataSourceV2Service {
     async getDataMany(alias: string, params: GetDataManyRequestDto, context: Context) {
         let inst = await this.getDataSource(alias, context)
         return inst.getMany(params)
+    }
+
+    async getTotals(alias: string, params: GetDataManyRequestDto, context: Context) {
+        let inst = await this.getDataSource(alias, context)
+        return inst.getTotals(params)
+    }
+
+    async exportData(alias: string, params: ExportDataRequestDto, context: Context) {
+        let inst = await this.getDataSource(alias, context)
+        return inst.exportData(params)
     }
 
     async upsertDataSourceItems(alias: string, data: UpsertDataSourceDataRequestDto, context: Context) {

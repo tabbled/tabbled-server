@@ -55,6 +55,14 @@ export class InternalDBDatasource {
         return await this.indexer.getDataMany(params, this.config, this.context)
     }
 
+    async getTotals(params) {
+        return await this.indexer.getTotals(params, this.config, this.context)
+    }
+
+    async exportData(params) {
+        return await this.indexer.exportData(params, this.config, this.context)
+    }
+
     async getById(id) {
 
         let fields = this.config.fields.map(f => `"${f.alias}"` )

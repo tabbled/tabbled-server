@@ -18,11 +18,12 @@ import { DataSourceV2Service } from "./datasourceV2.service";
 import {
     DataIndexRequestDto,
     DataIndexResponseDto,
-    DeleteDataSourceDataRequestDto,
+    DeleteDataSourceDataRequestDto, ExportDataRequestDto,
     GetDataManyRequestDto,
     GetDataManyResponseDto,
     GetManyResponseDto,
-    GetRevisionsResponseDto,
+    GetRevisionsResponseDto, GetTotalDataManyRequestDto,
+    GetTotalsResponseDto,
     InsertDataSourceRequestDto,
     InsertDataSourceResponseDto,
     ResponseDto,
@@ -73,6 +74,62 @@ export class DataSourceV2Controller {
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(DataSourceInterceptor)
     @Version(['2'])
+    @Post(':alias/data/totals')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Get aggregated totals of data of datasource by alias' })
+    async getDataTotal(
+        @Param('alias') alias: string,
+        @Body() body: GetTotalDataManyRequestDto,
+        @Req() req: Request,
+    ): Promise<GetTotalsResponseDto> {
+        let res
+        try {
+            res = await this.dsService.getTotals(alias, body, this.getContext(req))
+            return {
+                statusCode: 200,
+                ...res
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
+    @Version(['2'])
+    @Post(':alias/data/export')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Export all data of datasource by alias' })
+    async exportData(
+        @Param('alias') alias: string,
+        @Body() body: ExportDataRequestDto,
+        @Req() req: Request,
+    ): Promise<GetTotalsResponseDto> {
+        let res
+        try {
+            res = await this.dsService.exportData(alias, body, this.getContext(req))
+            return {
+                statusCode: 200,
+                ...res
+            }
+        } catch (e) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(DataSourceInterceptor)
+    @Version(['2'])
     @Post(':alias/data/index')
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Index data source data into search engine,' +
@@ -84,8 +141,8 @@ export class DataSourceV2Controller {
         @Req() req: Request,
     ): Promise<DataIndexResponseDto> {
 
-        let config = req['datasource.config']
-        if (config.type !== 'internal' || config.type !== 'internal-db') {
+        let config = await this.dsService.getConfigByAlias(alias)
+        if (config.type !== 'internal' && config.type !== 'internal-db') {
             throw new HttpException(
                 {
                     statusCode: HttpStatus.BAD_REQUEST,
@@ -234,7 +291,8 @@ export class DataSourceV2Controller {
         @Req() req: Request,
     ): Promise<GetDataManyResponseDto> {
         try {
-            let items = await this.dsService.getFieldsMany({datasource: alias, nested: nested}, this.getContext(req))
+
+            let items = await this.dsService.getFieldsMany({datasource: alias, nested: nested})
             return {
                 statusCode: 200,
                 items: items.items,
@@ -297,7 +355,7 @@ export class DataSourceV2Controller {
         @Param('alias') alias: string,
         @Body() body: InsertDataSourceRequestDto
     ): Promise<InsertDataSourceResponseDto> {
-        let config = req['datasource.config']
+        let config = await this.dsService.getConfigByAlias(alias)
         if (config.type !== 'internal-db')
             throw new HttpException(
                 {
@@ -334,7 +392,7 @@ export class DataSourceV2Controller {
         @Param('alias') alias: string,
         @Body() body: UpsertDataSourceDataRequestDto
     ): Promise<UpsertDataSourceDataResponseDto> {
-        let config = req['datasource.config']
+        let config = await this.dsService.getConfigByAlias(alias)
         if (config.type !== 'internal-db')
             throw new HttpException(
                 {
@@ -380,7 +438,7 @@ export class DataSourceV2Controller {
         @Param('alias') alias: string,
         @Body() body: DeleteDataSourceDataRequestDto
     ): Promise<ResponseDto> {
-        let config = req['datasource.config']
+        let config = await this.dsService.getConfigByAlias(alias)
         if (config.type !== 'internal-db')
             throw new HttpException(
                 {

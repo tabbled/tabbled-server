@@ -246,6 +246,12 @@ export class GetDataManyDto {
     count: number
 }
 
+export class GetTotalsResponseDto {
+    totals?: {
+        [key in string]: number
+    }
+}
+
 export class GetManyResponseDto extends ResponseDto {
     items: any
     count: number
@@ -254,6 +260,11 @@ export class GetManyResponseDto extends ResponseDto {
 export class GetDataManyResponseDto extends ResponseDto {
     items: DataItem[]
     count: number
+}
+
+export class AggregationDto {
+    field: string
+    func: 'none' | 'sum' | 'avg' | 'min' | 'max'
 }
 
 export class GetDataManyRequestDto {
@@ -292,6 +303,61 @@ export class GetDataManyRequestDto {
     @IsOptional()
     @IsString()
     parentId?: string
+
+    @IsOptional()
+    @IsArray()
+    agg?: AggregationDto[]
+}
+
+export class GetTotalDataManyRequestDto {
+    @IsOptional()
+    @IsArray()
+    agg?: AggregationDto[]
+
+    @IsOptional()
+    @IsArray()
+    filter?: FilterItemInterface[]
+
+    @IsOptional()
+    @IsString()
+    filterBy?:string
+
+    @IsOptional()
+    @IsArray()
+    searchBy?:string[]
+
+    @IsOptional()
+    @IsString()
+    query?: string
+
+    @IsOptional()
+    @IsString()
+    parentId?: string
+}
+
+export class ExportDataRequestDto {
+    @IsOptional()
+    @IsArray()
+    filter?: FilterItemInterface[]
+
+    @IsOptional()
+    @IsString()
+    filterBy?:string
+
+    @IsOptional()
+    @IsArray()
+    searchBy?:string[]
+
+    @IsArray()
+    fields: string[]
+
+    @IsOptional()
+    @IsString()
+    query?: string
+
+    @IsOptional()
+    @IsArray()
+    sort?: string[]
 }
 
 export class UpsertDataSourceDataRequestDto {
