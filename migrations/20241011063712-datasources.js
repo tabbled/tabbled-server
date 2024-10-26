@@ -16,9 +16,6 @@ exports.setup = function(options, seedLink) {
 
 exports.up = async function(db) {
     await db.runSql(
-        "ALTER TABLE datasource_fields DROP CONSTRAINT ds_fields;" +
-        "DROP TABLE IF EXISTS datasource;" +
-        "DELETE FROM datasource_fields;"+
         "CREATE TABLE datasource (" +
         "id bigserial primary key," +
         "account_id int NOT NULL REFERENCES accounts(id) ON DELETE NO ACTION ON UPDATE CASCADE,"+
@@ -204,7 +201,11 @@ const getFields = async(db) => {
 }
 
 exports.down = async function(db) {
-    await db.runSql("ALTER TABLE datasource_fields RENAME COLUMN nullable TO required;")
+    await db.runSql(
+        "ALTER TABLE datasource_fields RENAME COLUMN nullable TO required;" +
+        "ALTER TABLE datasource_fields DROP CONSTRAINT ds_fields;" +
+        "DROP TABLE IF EXISTS datasource;" +
+        "DELETE FROM datasource_fields;")
 };
 
 exports._meta = {
