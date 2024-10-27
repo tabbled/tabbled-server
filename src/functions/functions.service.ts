@@ -231,9 +231,8 @@ class DataSourceV2ScriptHelper {
     private readonly service: DataSourceV2Service
     private readonly context: Context
 
-    async getByAlias(alias: string) {
-        console.log('getByAliasV2', alias)
-        return await this.service.getDataSource(alias, this.context)
+    async getByAlias(alias: string, withNestedFields = false) {
+        return await this.service.getDataSource(alias, withNestedFields, this.context)
     }
 }
 

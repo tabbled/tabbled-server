@@ -36,6 +36,7 @@ exports.up = async function(db) {
         "deleted_by int REFERENCES users(id) ON DELETE NO ACTION ON UPDATE CASCADE," +
         "UNIQUE(account_id, alias)" +
         ");" +
+        "DELETE FROM datasource_fields;"+
         "ALTER TABLE datasource_fields ADD CONSTRAINT ds_fields FOREIGN KEY (datasource_id) REFERENCES datasource (id);" +
         "ALTER TABLE datasource_fields ADD UNIQUE(datasource_id, alias);"+
         "ALTER TABLE datasource_fields RENAME COLUMN required TO nullable;"
@@ -101,10 +102,11 @@ const getDatasource = async(db) => {
 
 const populateFields = async (db) => {
     let fields = await getFields(db)
-    //console.log(fields)
+
 
     for (let i in fields) {
         let field = fields[i]
+        console.log("field", field)
         let query = "INSERT INTO datasource_fields (" +
             "datasource_id," +
             "datasource_alias," +
@@ -146,6 +148,8 @@ const populateFields = async (db) => {
             `${field.updated_by},` +
             `${field.account_id},` +
             `${field.version})`
+
+        console.log(query)
         await db.runSql(query)
     }
 

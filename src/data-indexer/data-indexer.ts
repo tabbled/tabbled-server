@@ -67,7 +67,6 @@ export class DataIndexer {
             throw e
         }
 
-
         let dsFields = dataSourceConfig.fields
         const allFields = new Map(dsFields.map(i => [i.alias, i]))
 
@@ -379,6 +378,9 @@ export class DataIndexer {
 
 
     private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, fieldsToSelect: string[], timezone = this.timezone):DataItem {
+        if (!fieldsToSelect || !fieldsToSelect.length)
+            return item
+
         let o = item
         fieldsToSelect.forEach(f => {
             if (fields.has(f) && ['datetime', 'date'].includes(fields.get(f).type)) {

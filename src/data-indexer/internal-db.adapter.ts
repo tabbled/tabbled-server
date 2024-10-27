@@ -23,6 +23,8 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
             query += ` WHERE id IN (${ids.join(',')})`
         }
 
+        console.log(query)
+
         let items = await this.dataSource.query(query)
 
         let docs = []

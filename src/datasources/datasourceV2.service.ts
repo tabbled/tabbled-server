@@ -136,7 +136,7 @@ export class DataSourceV2Service {
 
     // For internal use without context
     // Don't use it to response to user
-    async getConfigByAlias(alias: string): Promise<DataSourceV2Dto> {
+    async getConfigByAlias(alias: string, withNestedFields = false): Promise<DataSourceV2Dto> {
         const rep = this.datasource.getRepository(DatasourceV2Entity)
         let item = await rep
             .createQueryBuilder('ds')
@@ -147,7 +147,7 @@ export class DataSourceV2Service {
             .getOne()
 
         if (item) {
-            item.fields = (await this.getFieldsMany({datasource: alias, nested: true})).items
+            item.fields = (await this.getFieldsMany({datasource: alias, nested: withNestedFields})).items
         }
 
         if (item) {
@@ -157,8 +157,8 @@ export class DataSourceV2Service {
         return item ? item : null
     }
 
-    async getDataSource(alias: string, context: Context) {
-        let ds = await this.getConfigByAlias(alias)
+    async getDataSource(alias: string, withNestedFields: boolean, context: Context) {
+        let ds = await this.getConfigByAlias(alias, withNestedFields)
         if (!ds)
             throw `Datasource ${alias} not found`
 
@@ -392,7 +392,12 @@ export class DataSourceV2Service {
             })
 
             await queryRunner.commitTransaction()
-            await this.upsertIndex(ds.alias, context)
+
+            try {
+                await this.upsertIndex(ds.alias, context)
+            } catch (e) {
+                this.logger.error(e)
+            }
 
             return {
                 id: data.id
@@ -661,27 +666,27 @@ export class DataSourceV2Service {
     }
 
     async getDataMany(alias: string, params: GetDataManyRequestDto, context: Context) {
-        let inst = await this.getDataSource(alias, context)
+        let inst = await this.getDataSource(alias, true, context)
         return inst.getMany(params)
     }
 
     async getTotals(alias: string, params: GetDataManyRequestDto, context: Context) {
-        let inst = await this.getDataSource(alias, context)
+        let inst = await this.getDataSource(alias, false, context)
         return inst.getTotals(params)
     }
 
     async exportData(alias: string, params: ExportDataRequestDto, context: Context) {
-        let inst = await this.getDataSource(alias, context)
+        let inst = await this.getDataSource(alias, true, context)
         return inst.exportData(params)
     }
 
     async upsertDataSourceItems(alias: string, data: UpsertDataSourceDataRequestDto, context: Context) {
-        let inst = await this.getDataSource(alias, context)
+        let inst = await this.getDataSource(alias, false, context)
         return inst.upsert(data)
     }
 
     async deleteDataSourceItems(alias, data: DeleteDataSourceDataRequestDto, context: Context) {
-        let inst = await this.getDataSource(alias, context)
+        let inst = await this.getDataSource(alias, false, context)
         if (data.ids) {
             return inst.deleteById({ids: data.ids, soft: data.soft !== undefined ? data.soft : true})
         } else if (data.where) {
