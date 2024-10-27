@@ -212,8 +212,7 @@ export class DataIndexer {
 
 
         let taskUid = (await index.addDocuments(docs)).taskUid
-
-        let task = await this.searchClient.waitForTask(taskUid)
+        let task = await this.searchClient.waitForTask(taskUid, {timeOutMs: 60 * 1000})
         if (task.status !== 'succeeded')
             throw task.error
 
