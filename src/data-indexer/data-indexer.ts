@@ -181,7 +181,7 @@ export class DataIndexer {
     }
 
     public async dataReindex(params: DataReindexDto, context: Context) : Promise<number> {
-       let adapter: IndexerDataAdapter = this.getAdapter(params.dataSourceConfig.type)
+        let adapter: IndexerDataAdapter = this.getAdapter(params.dataSourceConfig.type)
 
         if (!adapter)
             throw `DataSource has no ability to index`
@@ -280,6 +280,7 @@ export class DataIndexer {
                 continue
             }
 
+            //TODO This is not support multiple field type
             for(let j in items) {
                 items[j][field.alias] = await this.replaceLinkedDataToItem(items[j][field.alias], index, fields)
             }
@@ -306,7 +307,7 @@ export class DataIndexer {
 
 
         } else {
-            this.logger.warn(`Item id must be a type of string`)
+            this.logger.warn(`Item id must be a type of string, current type is ${typeof id}, may by field is multiple?`)
             return {
                 id: id
             }

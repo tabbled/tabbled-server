@@ -296,7 +296,7 @@ export class DataSourceV2Service {
                 .values(d)
                 .orUpdate(['type', 'title', 'searchable', 'filterable',
                     'sortable', 'is_multiple','default_value', 'datasource_ref',
-                    'autoincrement', 'required', 'enum_values', 'precision',
+                    'autoincrement', 'nullable', 'enum_values', 'precision',
                     'format', 'updated_by', 'updated_at', 'deleted_at',
                     'deleted_by', 'version'],
                     ['account_id', 'datasource_alias', 'alias'])
@@ -698,6 +698,7 @@ export class DataSourceV2Service {
 
     @OnEvent('config-update.datasource.*', {async: true})
     async handleDataSourceConfigUpdate(data) {
+        console.log('config-update.datasource.*')
 
         let queryRunner = this.datasource.createQueryRunner()
         await queryRunner.startTransaction()
@@ -706,6 +707,7 @@ export class DataSourceV2Service {
             await this.updateDatasourceFromV1(queryRunner, data.item, data.context)
             await queryRunner.commitTransaction()
         } catch (e) {
+            console.log(e)
             await queryRunner.rollbackTransaction()
             throw e
         } finally {
