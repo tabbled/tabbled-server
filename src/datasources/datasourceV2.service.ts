@@ -475,7 +475,8 @@ export class DataSourceV2Service {
             await this.indexer.createIndex(indexUid)
             index = await this.indexer.getIndex(indexUid)
         }
-        await this.indexer.updateIndexSettings(index, /*ds.fields*/)
+        let full = await this.getConfigByAlias(alias, true)
+        await this.indexer.updateIndexSettings(index, full.fields)
         await this.indexer.dataReindex({dataSourceConfig: ds}, context)
     }
 

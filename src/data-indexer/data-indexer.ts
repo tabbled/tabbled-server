@@ -196,13 +196,13 @@ export class DataIndexer {
         if (!index) {
             await this.createIndex(indexUid)
             index = await this.getIndex(indexUid)
-            await this.updateIndexSettings(index/*, params.dataSourceConfig.fields*/)
+            await this.updateIndexSettings(index, params.dataSourceConfig.fields)
         } else if (!params.ids || !params.ids.length){
             newIndexUid = `${indexUid}__new__`
             await this.searchClient.deleteIndexIfExists(newIndexUid)
             await this.createIndex(newIndexUid)
             index = await this.getIndex(newIndexUid)
-            await this.updateIndexSettings(index, /*params.dataSourceConfig.fields*/)
+            await this.updateIndexSettings(index, params.dataSourceConfig.fields)
 
         }
 
@@ -475,20 +475,23 @@ export class DataIndexer {
             throw task.error
     }
 
-    async updateIndexSettings(index: Index/*, fields: DatasourceField[]*/) {
+    async updateIndexSettings(index: Index, fields: DatasourceField[]) {
+
         //let sort = fields.filter(f=>f.sortable).map(f=>f.alias)
-        //let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
+        let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
         //let search = fields.filter(f=>f.searchable).map(f=>f.alias)
 
-        // Need add filterable link field id to index linked data after update linked item
-        // fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
-        //     filter.push(`${i.alias}.id`)
-        // })
+        //Need add filterable link field id to index linked data after update linked item
+        fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
+            filter.push(`${i.alias}.id`)
+        })
+
+        console.log(filter)
 
         let taskUid = (await index.updateSettings({
             sortableAttributes: ['*'],
             displayedAttributes: ['*'],
-            filterableAttributes: ['*'],
+            filterableAttributes: filter,
             searchableAttributes: ['*']
         })).taskUid
 
