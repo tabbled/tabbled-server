@@ -76,7 +76,7 @@ export class DataIndexer {
             filterBy = this.convertFilterToSearch(params.filter, allFields)
         }
 
-        await this.validateFieldIsSortable(index, params.sort)
+        await this.validateFieldIsSortable(index, params.sort, params.searchBy)
 
 
         let searchParams:SearchParams = {
@@ -196,13 +196,14 @@ export class DataIndexer {
         if (!index) {
             await this.createIndex(indexUid)
             index = await this.getIndex(indexUid)
-            await this.updateIndexSettings(index, params.dataSourceConfig.fields)
+            await this.updateIndexSettings(index/*, params.dataSourceConfig.fields*/)
         } else if (!params.ids || !params.ids.length){
             newIndexUid = `${indexUid}__new__`
             await this.searchClient.deleteIndexIfExists(newIndexUid)
             await this.createIndex(newIndexUid)
             index = await this.getIndex(newIndexUid)
-            await this.updateIndexSettings(index, params.dataSourceConfig.fields)
+            await this.updateIndexSettings(index, /*params.dataSourceConfig.fields*/)
+
         }
 
         let docs = await adapter.getData(params.dataSourceConfig, context, params.ids)
@@ -474,21 +475,21 @@ export class DataIndexer {
             throw task.error
     }
 
-    async updateIndexSettings(index: Index, fields: DatasourceField[]) {
-        let sort = fields.filter(f=>f.sortable).map(f=>f.alias)
-        let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
-        let search = fields.filter(f=>f.searchable).map(f=>f.alias)
+    async updateIndexSettings(index: Index/*, fields: DatasourceField[]*/) {
+        //let sort = fields.filter(f=>f.sortable).map(f=>f.alias)
+        //let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
+        //let search = fields.filter(f=>f.searchable).map(f=>f.alias)
 
         // Need add filterable link field id to index linked data after update linked item
-        fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
-            filter.push(`${i.alias}.id`)
-        })
+        // fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
+        //     filter.push(`${i.alias}.id`)
+        // })
 
         let taskUid = (await index.updateSettings({
-            sortableAttributes: sort,
+            sortableAttributes: ['*'],
             displayedAttributes: ['*'],
-            filterableAttributes: filter,
-            searchableAttributes: search.length ? search : ['*']
+            filterableAttributes: ['*'],
+            searchableAttributes: ['*']
         })).taskUid
 
         let task = await this.searchClient.waitForTask(taskUid)
@@ -496,8 +497,12 @@ export class DataIndexer {
             throw task.error
     }
 
-    async validateFieldIsSortable(index: Index, sort: string[]) : Promise<boolean> {
-        let sortable = await index.getSortableAttributes()
+    async validateFieldIsSortable(index: Index, sort: string[], searchBy: string[]) : Promise<boolean> {
+        let settings = await index.getSettings()
+        let sortable = settings.sortableAttributes
+
+        console.log(settings)
+
         let needUpdate = false
 
         for(const i in sort) {
@@ -508,6 +513,10 @@ export class DataIndexer {
                 needUpdate = true
                 sortable.push(field)
             }
+        }
+
+        if (searchBy) {
+
         }
 
         if (needUpdate) {
