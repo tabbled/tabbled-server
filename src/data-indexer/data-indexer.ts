@@ -232,14 +232,9 @@ export class DataIndexer {
             await this.updateIndexSettings(index, params.dataSourceConfig.fields)
 
         }
-
-        console.log("<<<get data")
         let docs = await adapter.getData(params.dataSourceConfig, context, params.ids)
-        console.log(docs)
         docs = await this.replaceEnumDataToItems(params.dataSourceConfig, docs)
         docs = await this.replaceLinkedDataToItems(params.dataSourceConfig, docs, context)
-
-
 
         let taskUid = (await index.addDocuments(docs)).taskUid
         let task = await this.searchClient.waitForTask(taskUid, {timeOutMs: 60 * 1000})
@@ -336,7 +331,7 @@ export class DataIndexer {
 
 
         } else {
-            this.logger.warn(`Item id must be a type of string, current type is ${typeof id}, may by field is multiple?`)
+            //this.logger.warn(`Item id must be a type of string, current type is ${typeof id}, may by field is multiple?`)
             return {
                 id: id
             }

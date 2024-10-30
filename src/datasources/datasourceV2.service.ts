@@ -47,9 +47,6 @@ export class DataSourceV2Service {
         this.indexer = new DataIndexer(configService, datasource)
         this.timezone = configService.get<string>('DEFAULT_TIMEZONE') || 'Europe/Moscow'
         this.indexer.setTimezone(this.timezone)
-
-
-
     }
 
     private readonly logger = new Logger(DataSourceV2Service.name);

@@ -49,17 +49,19 @@ export class InternalAdapter extends IndexerDataAdapter {
             let val = field.isSystem ? item[field.alias] : item.data[field.alias]
 
             if(field.type === 'datetime') {
-                val = val ? dayjs(val).utc(false).valueOf() : null
+                val = val ? dayjs(val).utc(true).valueOf() : null
             } else if (field.type === 'date') {
                 console.log(val)
                 val = val ? dayjs(val)
-                        .utc(false)
-                    .set('hour', 0)
-                    .set('minute', 0)
-                    .set('second', 0)
-                    .set('millisecond', 0)
+                        .set('hour', 0)
+                        .set('minute', 0)
+                        .set('second', 0)
+                        .set('millisecond', 0)
+                        .utc()
                         .valueOf()
                      : null
+
+                console.log(val, new Date(val))
 
             }
             if (field.type === 'number') {

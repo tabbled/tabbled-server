@@ -44,17 +44,17 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
                 val = JSON.parse(val)
             } else {
                 if(field.type === 'datetime') {
-
                     val = val ? dayjs(val).utc(false).valueOf() : null
                 } else if (field.type === 'date') {
 
                     val = val
-                        ? dayjs(val).utc(false)
-                        .set('hour', 0)
-                        .set('minute', 0)
-                        .set('second', 0)
-                        .set('millisecond', 0)
-                        .valueOf()
+                        ? dayjs(val)
+                            .set('hour', 0)
+                            .set('minute', 0)
+                            .set('second', 0)
+                            .set('millisecond', 0)
+                            .utc(false)
+                            .valueOf()
                         : null
 
                 } else if (field.type === 'number') {
