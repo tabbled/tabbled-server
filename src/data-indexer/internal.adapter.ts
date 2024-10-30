@@ -53,11 +53,11 @@ export class InternalAdapter extends IndexerDataAdapter {
             } else if (field.type === 'date') {
                 console.log(val)
                 val = val ? dayjs(val)
+                        .utc(false)
                     .set('hour', 0)
                     .set('minute', 0)
                     .set('second', 0)
                     .set('millisecond', 0)
-                        .utc(false)
                         .valueOf()
                      : null
 
