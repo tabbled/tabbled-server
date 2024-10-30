@@ -141,7 +141,7 @@ export class DataSourceV2Controller {
         @Req() req: Request,
     ): Promise<DataIndexResponseDto> {
 
-        let config = await this.dsService.getConfigByAlias(alias)
+        let config = await this.dsService.getConfigByAlias(alias, true)
         if (config.type !== 'internal' && config.type !== 'internal-db') {
             throw new HttpException(
                 {

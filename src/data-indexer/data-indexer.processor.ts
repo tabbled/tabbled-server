@@ -16,6 +16,7 @@ import { Logger } from "@nestjs/common";
 export class IndexerConsumer extends WorkerHost {
     constructor(@InjectDataSource('default')
                 private datasource: DataSource,
+                //@InjectQueue('datasource-data-indexing') private dataIndexingQueue: Queue,
                 private configService: ConfigService) {
         super()
         this.indexer = new DataIndexer(configService, datasource)
@@ -24,7 +25,6 @@ export class IndexerConsumer extends WorkerHost {
     private indexer:DataIndexer = null
 
     async process(job: Job<DataIndexJob, any, string>): Promise<any> {
-
         await this.indexer.dataReindex({
                 dataSourceConfig: job.data.datasource,
                 ids: job.data.ids
@@ -51,7 +51,7 @@ export class IndexerConsumer extends WorkerHost {
 
     @OnWorkerEvent('active')
     onStart(job: Job) {
-        this.logger.log(`Job ${job.id} has started`)
+        this.logger.log(`Job ${job.id} has started`, job)
     }
 
 }

@@ -93,4 +93,6 @@ export class DatasourceField {
     public deletedBy?: number
 
     public isSystem?: boolean
+
+    public isLinked?:boolean
 }

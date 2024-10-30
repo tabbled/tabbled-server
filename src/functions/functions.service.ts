@@ -128,8 +128,6 @@ export class FunctionsService {
 
         if(params.room) {
             vm.on('console.log',  (...args) => {
-                console.log("<<<< console.log", this.eventEmitter)
-
                 this.eventEmitter.emit(`functions.logs`, {
                     room: params.room,
                     level: "log",
@@ -138,8 +136,6 @@ export class FunctionsService {
             })
 
             vm.on('console.error',  (...args) => {
-                console.log("<<<< console.error", this.eventEmitter)
-
                 this.eventEmitter.emit(`functions.logs`, {
                     room: params.room,
                     level: "error",

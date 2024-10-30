@@ -16,8 +16,8 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
         const schema = `"account_data${context.accountId}"."${ds.alias}"`
         console.log("Reindex for schema ", schema)
 
-        let fields = ds.fields.map(f => `"${f.alias}"` )
-        let query = `SELECT ${fields.join(', ')} FROM ${schema}`
+        let fields = ds.fields.filter(f=>!f.isLinked)
+        let query = `SELECT ${fields.map(f => `"${f.alias}"` ).join(', ')} FROM ${schema}`
 
         if (ids && ids.length > 0) {
             query += ` WHERE id IN (${ids.join(',')})`
@@ -29,7 +29,7 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
 
         let docs = []
         for (let i in items) {
-            docs.push(await this.prepareItemForIndex(items[i], ds.fields))
+            docs.push(await this.prepareItemForIndex(items[i], fields))
         }
         return docs
     }
@@ -43,15 +43,23 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
             if (field.isMultiple) {
                 val = JSON.parse(val)
             } else {
-                if(['datetime', 'date'].includes(field.type)) {
+                if(field.type === 'datetime') {
+
                     val = val ? dayjs(val).utc(false).valueOf() : null
-                }
+                } else if (field.type === 'date') {
 
-                if (field.type === 'number') {
+                    val = val
+                        ? dayjs(val).utc(false)
+                        .set('hour', 0)
+                        .set('minute', 0)
+                        .set('second', 0)
+                        .set('millisecond', 0)
+                        .valueOf()
+                        : null
+
+                } else if (field.type === 'number') {
                     val = Number(val)
-                }
-
-                if (field.type === 'string' ) {
+                } else if (field.type === 'string' ) {
                     val = val !== undefined && val !== null ? String(val) : ""
                 }
             }

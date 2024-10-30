@@ -22,9 +22,33 @@ import { IndexerDataAdapter } from "./data-indexer.adapter";
 import { InternalAdapter } from "./internal.adapter";
 import { InternalDbAdapter } from "./internal-db.adapter";
 import * as _ from "lodash";
+import 'dayjs/locale/ru'
+import * as numeral from "numeral";
+
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.locale()
+
+numeral.register('locale', 'ru', {
+    delimiters: {
+        thousands: ' ',
+        decimal: ','
+    },
+    abbreviations: {
+        thousand: 'k',
+        million: 'm',
+        billion: 'b',
+        trillion: 't'
+    },
+    ordinal : function (number) {
+        return number === 1 ? '' : '';
+    },
+    currency: {
+        symbol: '₽'
+    }
+});
+numeral.locale('ru');
 
 
 export class DataIndexer {
@@ -83,16 +107,17 @@ export class DataIndexer {
             sort: params.sort,
             attributesToSearchOn: params.searchBy,
             filter: filterBy,
-            offset: params.offset,
             limit: params.limit,
+            offset: params.offset,
             attributesToRetrieve: params.fields
         }
-
         let res = await index.search(params.query, searchParams)
 
         return {
-            items: res.hits.map(i=> this.prepareItemForUser(i, allFields, params.fields)),
-            count: res.estimatedTotalHits
+            items: res.hits.map(i=> this.prepareItemForUser(i, allFields, params.fields, this.timezone, params.formatValues)),
+            totalCount: res.estimatedTotalHits,
+            count: res.hits.length,
+            processingTimeMs: res.processingTimeMs
         }
     }
 
@@ -119,9 +144,11 @@ export class DataIndexer {
         let searchParams:SearchParams = {
             attributesToSearchOn: params.searchBy,
             filter: filterBy,
-            limit: 3000,
+            limit: 10000,
             attributesToRetrieve: params.agg.map(f => f.field)
         }
+
+
 
         let res = (await index.search(params.query, searchParams)).hits
 
@@ -149,11 +176,11 @@ export class DataIndexer {
     public async exportData(params: ExportDataRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context) {
         let data = await this.getDataMany({
             ...params,
-            limit: 5000,
-            offset: 0
+            limit: 10000,
+            offset: 0,
+            formatValues: true
         }, dataSourceConfig, context)
 
-        console.log(data.items)
 
         return {
             file: this.arrayToCsv(data.items, params.fields)
@@ -206,7 +233,9 @@ export class DataIndexer {
 
         }
 
+        console.log("<<<get data")
         let docs = await adapter.getData(params.dataSourceConfig, context, params.ids)
+        console.log(docs)
         docs = await this.replaceEnumDataToItems(params.dataSourceConfig, docs)
         docs = await this.replaceLinkedDataToItems(params.dataSourceConfig, docs, context)
 
@@ -299,7 +328,7 @@ export class DataIndexer {
                 })
                 return doc
             } catch (e) {
-                this.logger.warn(`Document with id ${id} not found in index ${index.uid}`)
+                //this.logger.warn(`Document with id ${id} not found in index ${index.uid}`)
                 return {
                     id: id
                 }
@@ -378,17 +407,35 @@ export class DataIndexer {
     }
 
 
-    private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, fieldsToSelect: string[], timezone = this.timezone):DataItem {
+    private prepareItemForUser(item: any, fields: Map<string, DatasourceField>, fieldsToSelect: string[], timezone = this.timezone, formatValues = false):DataItem {
         if (!fieldsToSelect || !fieldsToSelect.length)
             return item
 
         let o = item
         fieldsToSelect.forEach(f => {
-            if (fields.has(f) && ['datetime', 'date'].includes(fields.get(f).type)) {
-                _.set(item, f, _.has(item, f) && _.get(item, f) !== null
-                    ? dayjs(Number(_.get(item, f))).tz(timezone).format()
-                    : null )
+            if (fields.has(f)) {
+                let field = fields.get(f)
+                if (field.type === 'datetime') {
+
+                    _.set(item, f, _.has(item, f) && _.get(item, f) !== null
+                        ? dayjs(Number(_.get(item, f))).tz(timezone).format()
+                        : null )
+
+                } else if (field.type === 'date') {
+                    _.set(item, f, _.has(item, f) && _.get(item, f) !== null
+                        ? dayjs(Number(_.get(item, f))).tz(timezone).format(formatValues ? 'DD.MM.YYYY' : '')
+                        : null )
+                } else if (formatValues && field.type === 'number' && !field.isMultiple) {
+
+                    _.set(item, f, _.has(item, f) && _.get(item, f) !== null
+                        ? numeral(_.get(item, f)).format(`0.[${field.precision ? '0'.repeat(field.precision) : '00'}]`)
+                        : null )
+
+                }
             }
+
+
+
         })
         return o
     }
@@ -476,23 +523,22 @@ export class DataIndexer {
     }
 
     async updateIndexSettings(index: Index, fields: DatasourceField[]) {
-
-        //let sort = fields.filter(f=>f.sortable).map(f=>f.alias)
-        let filter = fields.filter(f=>f.filterable).map(f=>f.alias)
-        //let search = fields.filter(f=>f.searchable).map(f=>f.alias)
+        console.log(fields)
+        let filter = fields.filter(f=> f.type !== 'table' && f.type !== 'link').map(f=>f.alias)
 
         //Need add filterable link field id to index linked data after update linked item
         fields.filter(f => f.type === 'link' || f.type === 'enum').forEach(i => {
             filter.push(`${i.alias}.id`)
         })
 
-        console.log(filter)
-
         let taskUid = (await index.updateSettings({
             sortableAttributes: ['*'],
             displayedAttributes: ['*'],
             filterableAttributes: filter,
-            searchableAttributes: ['*']
+            searchableAttributes: ['*'],
+            pagination: {
+                maxTotalHits: 100000
+            }
         })).taskUid
 
         let task = await this.searchClient.waitForTask(taskUid)
@@ -503,8 +549,6 @@ export class DataIndexer {
     async validateFieldIsSortable(index: Index, sort: string[], searchBy: string[]) : Promise<boolean> {
         let settings = await index.getSettings()
         let sortable = settings.sortableAttributes
-
-        console.log(settings)
 
         let needUpdate = false
 
@@ -547,5 +591,18 @@ export class DataIndexer {
         f.push('id')
         return f
 
+    }
+
+    async deleteDocsById(config, ids, context) {
+        let index:Index
+        try {
+            index = await this.searchClient.getIndex(this.getIndexUid(config.alias, context))
+        } catch (e) {
+            throw e
+        }
+
+        await index.deleteDocuments({
+            filter: `id IN [${ids.join(',')}]`
+        })
     }
 }

@@ -6,6 +6,12 @@ import { DataSourceV2Dto } from "../datasources/dto/datasourceV2.dto";
 import { DatasourceField } from "../datasources/entities/field.entity";
 import * as dayjs from "dayjs";
 import { DataItem } from "../datasources/entities/dataitem.entity";
+import * as utc from "dayjs/plugin/utc";
+import * as timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale()
 
 export class InternalAdapter extends IndexerDataAdapter {
     constructor(dataSource: DataSource, searchClient: MeiliSearch) {
@@ -16,7 +22,7 @@ export class InternalAdapter extends IndexerDataAdapter {
         const rep = this.dataSource.getRepository(DataItem)
         let query = rep
             .createQueryBuilder()
-            .select('data, ' + ds.fields.filter(f=>f.isSystem).map(f => f.alias).join(','))
+            .select('data, ' + ds.fields.filter(f=>f.isSystem && !f.isLinked).map(f => f.alias).join(','))
             .where(
                 `alias = :alias`,
                 { alias: ds.alias }
@@ -42,10 +48,20 @@ export class InternalAdapter extends IndexerDataAdapter {
             const field = fields[i]
             let val = field.isSystem ? item[field.alias] : item.data[field.alias]
 
-            if(['datetime', 'time', 'date'].includes(field.type)) {
+            if(field.type === 'datetime') {
                 val = val ? dayjs(val).utc(false).valueOf() : null
-            }
+            } else if (field.type === 'date') {
+                console.log(val)
+                val = val ? dayjs(val)
+                    .set('hour', 0)
+                    .set('minute', 0)
+                    .set('second', 0)
+                    .set('millisecond', 0)
+                        .utc(false)
+                        .valueOf()
+                     : null
 
+            }
             if (field.type === 'number') {
                 val = Number(val)
             }

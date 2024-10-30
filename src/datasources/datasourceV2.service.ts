@@ -48,6 +48,8 @@ export class DataSourceV2Service {
         this.timezone = configService.get<string>('DEFAULT_TIMEZONE') || 'Europe/Moscow'
         this.indexer.setTimezone(this.timezone)
 
+
+
     }
 
     private readonly logger = new Logger(DataSourceV2Service.name);
@@ -123,6 +125,12 @@ export class DataSourceV2Service {
         // return {
         //     jobId: "0"
         // }
+
+        //console.log("dataReindex!!!")
+
+        this.dataIndexingQueue.count().then(i => {
+            console.log('datasource-data-indexing, jobs count: ', i)
+        })
 
         let job = await this.dataIndexingQueue.add("index-all-datasource",{
             datasource: params.dataSourceConfig,
@@ -245,6 +253,7 @@ export class DataSourceV2Service {
                 linked.forEach(f => {
                     f.alias = `${field.alias}.${f.alias}`
                     f.title = `${field.title} -> ${f.title}`
+                    f.isLinked = true
                     items.push(f)
                 })
             }
@@ -721,12 +730,15 @@ export class DataSourceV2Service {
         }, data.context)
     }
 
-    @OnEvent('data-update.**', {async: true})
+    @OnEvent('data-update.*.updated', {async: true})
     async handleDataSourceDataUpdate(data) {
+        this.logger.log("New event 'data-update.*.updated'")
         if (!data.alias) {
             this.logger.error("Event data-update.** doesn't have alias of datasource")
             return;
         }
+
+
 
         let config = await this.getConfigByAlias(data.alias)
         await this.dataReindex({
@@ -735,9 +747,21 @@ export class DataSourceV2Service {
         }, data.context)
     }
 
+    @OnEvent('data-update.*.deleted', {async: true})
+    async handleDataSourceDataDelete(data) {
+        this.logger.log("New event data-update.*.deleted")
+        if (!data.alias) {
+            this.logger.error("Event data-update.** doesn't have alias of datasource")
+            return;
+        }
+
+        let config = await this.getConfigByAlias(data.alias)
+        await this.indexer.deleteDocsById(config, data.ids, data.context)
+    }
+
     @OnEvent('data-update.*.imported')
     async handleDataSourceDataImported(data) {
-        //console.log('data-update.*.imported', data)
+        this.logger.log('New event data-update.*.imported')
         let config = await this.getConfigByAlias(data.item.data.alias)
         await this.dataReindex({
             dataSourceConfig: config,

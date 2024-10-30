@@ -2,7 +2,7 @@ import { DataSourceV2Dto } from "./dto/datasourceV2.dto";
 import { DataSource, QueryRunner } from "typeorm";
 import { Context } from "../entities/context";
 import { Logger } from "@nestjs/common";
-import { flakeId } from "../flake-id";
+import { FlakeId } from "../flake-id";
 import * as dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import * as timezone from "dayjs/plugin/timezone";
@@ -10,6 +10,7 @@ import { DataIndexer } from "../data-indexer/data-indexer";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 dayjs.extend(utc);
 dayjs.extend(timezone);
+const flakeId = new FlakeId()
 
 export class UpsertParams {
     items: any[]
@@ -114,6 +115,7 @@ export class InternalDBDatasource {
         try {
 
             let items = []
+            let ids = []
             for(let i in params.items) {
                 let upsItem = params.items[i]
 
@@ -125,10 +127,12 @@ export class InternalDBDatasource {
                 }
 
                 if (!existItem) {
-                    fItem = await this.insertItem(queryRunner, upsItem, Number(i))
+                    fItem = await this.insertItem(queryRunner, upsItem)
                 } else {
                     fItem = await this.updateItem(queryRunner, upsItem, existItem)
                 }
+
+                ids.push(fItem.id)
 
                 if (params.returnItems)
                     items.push(fItem)
@@ -137,7 +141,7 @@ export class InternalDBDatasource {
             await queryRunner.commitTransaction()
 
             this.eventEmitter.emit(`data-update.${this.config.alias}.updated`, {
-                ids: items.map(i => i.id),
+                ids: ids,
                 alias: this.config.alias,
                 context: this.context
             })
@@ -172,6 +176,12 @@ export class InternalDBDatasource {
             }
 
             await queryRunner.commitTransaction()
+
+            this.eventEmitter.emit(`data-update.${this.config.alias}.${params.soft ? "updated" : "deleted"}`, {
+                ids: params.ids,
+                alias: this.config.alias,
+                context: this.context
+            })
         } catch (e) {
             await queryRunner.rollbackTransaction()
             this.logger.error(e)
@@ -190,6 +200,10 @@ export class InternalDBDatasource {
         await queryRunner.startTransaction()
         try {
 
+            let ids = await queryRunner.manager.query(`SELECT id FROM ${this.schema()} WHERE ${params.where}`,
+                [])
+
+
             if (params.soft) {
                 await queryRunner.manager.query(`UPDATE ${this.schema()} SET deleted_at = $1, deleted_by = $2 WHERE ${params.where}`,
                     [new Date(), this.context.userId])
@@ -202,6 +216,12 @@ export class InternalDBDatasource {
 
             await queryRunner.commitTransaction()
 
+            this.eventEmitter.emit(`data-update.${this.config.alias}.${params.soft ? "updated" : "deleted"}`, {
+                ids: ids.map(m => m.id),
+                alias: this.config.alias,
+                context: this.context
+            })
+
 
         } catch (e) {
             await queryRunner.rollbackTransaction()
@@ -212,7 +232,7 @@ export class InternalDBDatasource {
         }
     }
 
-    private async insertItem(queryRunner:QueryRunner, item: any, id?: number) {
+    private async insertItem(queryRunner:QueryRunner, item: any) {
         let notValid = this.isNotValid(item)
         if (notValid)
             throw notValid
@@ -223,14 +243,12 @@ export class InternalDBDatasource {
         item['updated_by'] = this.context.userId
         item['created_at'] = new Date()
         item['updated_at'] = new Date()
-        item['id'] = flakeId(id).toString()
+        item['id'] = flakeId.generateId().toString()
         item['version'] = 1
-
-
-        console.log(item)
 
         try{
             await queryRunner.manager.insert(this.schemaC(), item)
+
         } catch (e) {
             this.logger.error(e)
             throw e

@@ -244,6 +244,8 @@ export class DataReindexDto extends DataIndexRequestDto{
 export class GetDataManyDto {
     items: any
     count: number
+    totalCount: number
+    processingTimeMs: number
 }
 
 export class GetTotalsResponseDto {
@@ -307,6 +309,10 @@ export class GetDataManyRequestDto {
     @IsOptional()
     @IsArray()
     agg?: AggregationDto[]
+
+    @IsOptional()
+    @IsBoolean()
+    formatValues?: boolean
 }
 
 export class GetTotalDataManyRequestDto {
