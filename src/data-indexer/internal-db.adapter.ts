@@ -44,21 +44,20 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
                 val = JSON.parse(val)
             } else {
                 if(field.type === 'datetime') {
-                    val = val ? dayjs(val).utc(false).valueOf() : null
+                    val = val ? dayjs(val).utc().valueOf() : null
                 } else if (field.type === 'date') {
-
-                    val = val
-                        ? dayjs(val)
-                            .set('hour', 0)
-                            .set('minute', 0)
-                            .set('second', 0)
-                            .set('millisecond', 0)
-                            .utc(false)
-                            .valueOf()
-                        : null
-
+                    if (val) {
+                        let d = dayjs.tz(val.slice(0,10), 'YYYY-MM-DD', 'UTC')
+                        val = Number(d.format('YYYYMMDD'))
+                    } else
+                        val = null
+                } else if (field.type === 'time') {
+                    if (val) {
+                        let s = val.split(':')
+                        val = s.length === 3 ? Number(s[0]) * 60 * 60 + Number(s[1]) * 60 + Number(s[2]) : null
+                    }
                 } else if (field.type === 'number') {
-                    val = Number(val)
+                    val = val ? Number(val) : null
                 } else if (field.type === 'string' ) {
                     val = val !== undefined && val !== null ? String(val) : ""
                 }

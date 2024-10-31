@@ -52,16 +52,14 @@ export class InternalAdapter extends IndexerDataAdapter {
                 val = val ? dayjs(val).utc(true).valueOf() : null
             } else if (field.type === 'date') {
                 console.log(val)
-                val = val ? dayjs(val)
-                        .set('hour', 0)
-                        .set('minute', 0)
-                        .set('second', 0)
-                        .set('millisecond', 0)
-                        .utc()
-                        .valueOf()
-                     : null
 
-                console.log(val, new Date(val))
+                if (val) {
+                    let d = dayjs.tz(val.slice(0,10), 'YYYY-MM-DD', 'UTC')
+                    val = Number(d.format('YYYYMMDD'))
+                } else
+                    val = null
+
+                console.log(val)
 
             }
             if (field.type === 'number') {

@@ -413,13 +413,18 @@ export class DataIndexer {
                 if (field.type === 'datetime') {
 
                     _.set(item, f, _.has(item, f) && _.get(item, f) !== null
-                        ? dayjs(Number(_.get(item, f))).tz(timezone).format()
+                        ? dayjs(Number(_.get(item, f))).tz(timezone).format(formatValues ? 'DD.MM.YYYY hh:mm:ss' : '')
                         : null )
 
                 } else if (field.type === 'date') {
                     _.set(item, f, _.has(item, f) && _.get(item, f) !== null
-                        ? dayjs(Number(_.get(item, f))).tz(timezone).format(formatValues ? 'DD.MM.YYYY' : '')
+                        ? dayjs(String(_.get(item, f)), 'YYYYMMDD').format(formatValues ? 'DD.MM.YYYY' : 'YYYY-MM-DD')
                         : null )
+                } else if (field.type === 'time') {
+                    _.set(item, f, _.has(item, f) && _.get(item, f) !== null
+                        ? numeral(Number(_.get(item, f))).format('00:00:00')
+                        : null )
+
                 } else if (formatValues && field.type === 'number' && !field.isMultiple) {
 
                     _.set(item, f, _.has(item, f) && _.get(item, f) !== null
