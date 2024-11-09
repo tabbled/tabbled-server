@@ -38,6 +38,11 @@ export class InternalAdapter extends IndexerDataAdapter {
         for (let i in items) {
             docs.push(await this.prepareItemForIndex(items[i], ds.fields/*, linkDataSource*/))
         }
+
+        if (ds.isTree) {
+            this.prepareTree(docs)
+        }
+
         return docs
     }
 
@@ -51,15 +56,12 @@ export class InternalAdapter extends IndexerDataAdapter {
             if(field.type === 'datetime') {
                 val = val ? dayjs(val).utc(true).valueOf() : null
             } else if (field.type === 'date') {
-                console.log(val)
 
                 if (val) {
                     let d = dayjs.tz(val.slice(0,10), 'YYYY-MM-DD', 'UTC')
                     val = Number(d.format('YYYYMMDD'))
                 } else
                     val = null
-
-                console.log(val)
 
             }
             if (field.type === 'number') {

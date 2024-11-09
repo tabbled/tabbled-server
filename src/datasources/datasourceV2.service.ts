@@ -47,7 +47,6 @@ export class DataSourceV2Service {
         this.indexer = new DataIndexer(configService, datasource)
         this.timezone = configService.get<string>('DEFAULT_TIMEZONE') || 'Europe/Moscow'
         this.indexer.setTimezone(this.timezone)
-        console.log("timezone", this.timezone)
     }
 
     private readonly logger = new Logger(DataSourceV2Service.name);
@@ -223,19 +222,21 @@ export class DataSourceV2Service {
     async getFieldsMany(params: GetFieldsManyDto) {
         const getFields = async (alias: string) => {
             const rep = this.datasource.getRepository(DatasourceField)
-            return await rep
-                .createQueryBuilder()
+            let query = rep
+                .createQueryBuilder('f')
+                .select(['f.alias', 'f.type', 'f.title','f.isMultiple',
+                    'f.id', 'f.precision', 'f.format', 'f.filterable', 'f.sortable', 'f.searchable',
+                    'f.autoincrement', 'f.isNullable', 'f.enumValues', 'f.datasourceReference',
+                    'ds.alias', 'ds.isTree', 'ds.type'])
+                .leftJoin('f.linkedDatasource', 'ds')
                 .where(
-                    `datasource_alias = :alias AND deleted_at IS NULL`,
+                    `f.datasource_alias = :alias AND f.deleted_at IS NULL`,
                     { alias: alias }
                 )
-                .getMany() as DatasourceField[]
+            return await query.getMany()
         }
 
         let items = await getFields(params.datasource)
-
-
-
         items.push(...SystemFields)
 
 

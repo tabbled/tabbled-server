@@ -246,6 +246,7 @@ export class GetDataManyDto {
     count: number
     totalCount: number
     processingTimeMs: number
+    isTree?: boolean
 }
 
 export class GetTotalsResponseDto {
@@ -422,7 +423,7 @@ export const SystemFields:DatasourceField[] = [{
 },{
     id: "3",
     alias: "parent_id",
-    type: FieldType.link,
+    type: FieldType.string,
     title: "Parent Id",
     sortable: true,
     filterable: true,

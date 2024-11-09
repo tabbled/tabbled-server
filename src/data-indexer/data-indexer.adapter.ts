@@ -12,4 +12,27 @@ export abstract class IndexerDataAdapter {
     protected readonly searchClient: MeiliSearch
 
     abstract getData(ds: DataSourceV2Dto, context: Context,  ids?: string[]) : Promise<any[]>
+
+    prepareTree(docs) {
+        //console.log(docs)
+        for(let i in docs) {
+            let doc = docs[i]
+            //console.log(doc)
+            let route = []
+            if (doc.parent_id === '')
+                doc.parent_id = null
+
+            doc.route = getRoute(doc, route)
+            doc.has_children = docs.findIndex(f => doc.id === f.parent_id) >= 0
+        }
+
+        function getRoute(doc, route) : string[] {
+            if (doc && doc.parent_id) {
+                route.push(doc.parent_id)
+                return getRoute(docs.find(f => f.id === doc.parent_id), route)
+            } else {
+                return route
+            }
+        }
+    }
 }

@@ -14,7 +14,6 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
     // Get items from database to index documents into meilisearch
     async getData(ds: DataSourceV2Dto, context: Context, ids?: string[]) : Promise<any[]> {
         const schema = `"account_data${context.accountId}"."${ds.alias}"`
-        console.log("Reindex for schema ", schema)
 
         let fields = ds.fields.filter(f=>!f.isLinked)
         let query = `SELECT ${fields.map(f => `"${f.alias}"` ).join(', ')} FROM ${schema}`
@@ -23,14 +22,17 @@ export class InternalDbAdapter  extends IndexerDataAdapter {
             query += ` WHERE id IN (${ids.join(',')})`
         }
 
-        console.log(query)
-
         let items = await this.dataSource.query(query)
 
         let docs = []
         for (let i in items) {
             docs.push(await this.prepareItemForIndex(items[i], fields))
         }
+
+        if (ds.isTree) {
+            this.prepareTree(docs)
+        }
+
         return docs
     }
 

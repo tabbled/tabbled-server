@@ -57,6 +57,7 @@ export class DataSourceV2Controller {
         try {
              res = await this.dsService.getDataMany(alias, body, this.getContext(req))
         } catch (e) {
+            console.error(e)
             throw new HttpException(
                 {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -299,6 +300,7 @@ export class DataSourceV2Controller {
                 count: items.count
             }
         } catch (e) {
+            console.error(e)
             throw new HttpException(
                 {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

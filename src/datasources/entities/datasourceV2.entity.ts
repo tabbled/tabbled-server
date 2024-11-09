@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn, OneToMany } from "typeorm";
 import { Access, AccessType, DataSourceType, DataSourceV2Dto } from "../dto/datasourceV2.dto";
 import { DatasourceField } from "./field.entity";
 
@@ -42,6 +42,7 @@ export class DatasourceV2Entity implements DataSourceV2Dto{
     @Column({ type: 'text' })
     context?: string
 
+    @OneToMany(() => DatasourceField, (ds) => ds.datasourceAlias)
     fields?: DatasourceField[];
 
     @CreateDateColumn({

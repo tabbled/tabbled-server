@@ -3,9 +3,12 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
-    PrimaryGeneratedColumn
+    PrimaryGeneratedColumn,
+    ManyToOne,
+    JoinColumn
 } from "typeorm";
 import {FieldType, EnumValue} from "../dto/datasourceV2.dto";
+import { DatasourceV2Entity } from "./datasourceV2.entity";
 
 @Entity({ name: 'datasource_fields' })
 export class DatasourceField {
@@ -24,7 +27,7 @@ export class DatasourceField {
     @Column({ type: 'varchar', name: 'datasource_alias' })
     datasourceAlias?: string
 
-    @Column({ type: 'bigint', name: 'datasource_id' })
+    @Column({ type: 'bigint', name: 'datasource_id', select:false })
     datasourceId?: string
 
     @Column({ type: 'varchar', name: 'type' })
@@ -95,4 +98,9 @@ export class DatasourceField {
     public isSystem?: boolean
 
     public isLinked?:boolean
+
+
+    @ManyToOne(() => DatasourceV2Entity, (ds) => ds.alias)
+    @JoinColumn({ name: 'datasource_ref', referencedColumnName: 'alias' })
+    linkedDatasource?: DatasourceV2Entity
 }

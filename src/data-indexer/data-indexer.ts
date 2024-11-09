@@ -84,6 +84,7 @@ export class DataIndexer {
     }
 
     public async getDataMany(params: GetDataManyRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context) : Promise<GetDataManyDto> {
+        //console.log("getDataMany from", dataSourceConfig.alias, params)
         let index:Index
         try {
             index = await this.searchClient.getIndex(this.getIndexUid(dataSourceConfig.alias, context))
@@ -100,8 +101,24 @@ export class DataIndexer {
             filterBy = this.convertFilterToSearch(params.filter, allFields)
         }
 
-        await this.validateFieldIsSortable(index, params.sort, params.searchBy)
+        if (dataSourceConfig.isTree && params.parentId !== undefined) {
 
+            if (params.parentId) {
+                if (filterBy) {
+                    filterBy = `(${filterBy}) AND parent_id = ${params.parentId}`
+                } else {
+                    filterBy = `parent_id = ${params.parentId}`
+                }
+            } else {
+                if (filterBy) {
+                    filterBy = `(${filterBy}) AND parent_id IS NULL`
+                } else {
+                    filterBy = `parent_id IS NULL`
+                }
+            }
+        }
+
+        await this.validateFieldIsSortable(index, params.sort, params.searchBy)
 
         let searchParams:SearchParams = {
             sort: params.sort,
@@ -117,7 +134,8 @@ export class DataIndexer {
             items: res.hits.map(i=> this.prepareItemForUser(i, allFields, params.fields, this.timezone, params.formatValues)),
             totalCount: res.estimatedTotalHits,
             count: res.hits.length,
-            processingTimeMs: res.processingTimeMs
+            processingTimeMs: res.processingTimeMs,
+            isTree: dataSourceConfig.isTree ? dataSourceConfig.isTree : undefined
         }
     }
 
@@ -523,7 +541,6 @@ export class DataIndexer {
     }
 
     async updateIndexSettings(index: Index, fields: DatasourceField[]) {
-        console.log(fields)
         let filter = fields.filter(f=> f.type !== 'table' && f.type !== 'link').map(f=>f.alias)
 
         //Need add filterable link field id to index linked data after update linked item
