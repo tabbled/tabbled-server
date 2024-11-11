@@ -16,7 +16,7 @@ export class PagesService {
         let rep = this.datasource.getRepository(PageEntity)
         const query = rep
             .createQueryBuilder()
-            .select('id, alias, title, type')
+            .select('id, alias, title, type, permissions')
             .andWhere('account_id = :account AND deleted_at IS NULL', {
                 account: context.accountId
             })

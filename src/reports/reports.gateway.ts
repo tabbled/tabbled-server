@@ -5,7 +5,7 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets'
 import { ReportsService } from './reports.service'
-import { RenderByIdDto } from './dto/report.dto'
+import { RenderByIdRequestDto } from './dto/report.dto'
 import { Server } from 'socket.io'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
@@ -19,7 +19,7 @@ export class ReportsGateway {
     @WebSocketServer() server: Server
 
     @SubscribeMessage('reports/renderById')
-    async create(@MessageBody() renderByIdDto: RenderByIdDto) {
+    async create(@MessageBody() renderByIdDto: RenderByIdRequestDto) {
         console.log('reports/renderById', renderByIdDto)
 
         let transaction = Sentry.startTransaction({

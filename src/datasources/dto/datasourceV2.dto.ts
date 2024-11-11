@@ -10,6 +10,7 @@ import {
 import { FilterItemInterface } from "./datasource.dto";
 import { DatasourceField } from "../entities/field.entity";
 import { Type } from "class-transformer";
+import {ResponseDto} from "../../common/dto/response"
 
 export enum DataSourceType {
     internal = 'internal',
@@ -204,12 +205,6 @@ export class RevisionItem {
 export class GetRevisionsResponseDto {
     items: RevisionItem[]
     count: number
-}
-
-export class ResponseDto {
-    statusCode: number
-    error?: string
-    message?: string[]
 }
 
 export class InsertDataSourceResponseDto extends ResponseDto {

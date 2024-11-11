@@ -5,8 +5,10 @@ import { ConfigModule } from '@nestjs/config'
 import { FunctionsModule } from '../functions/functions.module'
 import { DataSourcesModule } from '../datasources/datasources.module'
 import { UsersModule } from '../users/users.module'
+import { ReportsController } from "./reports.contreller";
 
 @Module({
+    controllers: [ReportsController],
     providers: [ReportsGateway, ReportsService],
     imports: [ConfigModule, FunctionsModule, DataSourcesModule, UsersModule],
     exports: [ReportsService],

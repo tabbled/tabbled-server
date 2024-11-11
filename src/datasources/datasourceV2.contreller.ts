@@ -26,12 +26,12 @@ import {
     GetTotalsResponseDto,
     InsertDataSourceRequestDto,
     InsertDataSourceResponseDto,
-    ResponseDto,
     UpsertDataSourceDataRequestDto,
     UpsertDataSourceDataResponseDto
 } from "./dto/datasourceV2.dto";
 import { Context } from "../entities/context";
 import { DataSourceInterceptor } from "./datasourceV2.interceptor";
+import {ResponseDto} from "../common/dto/response"
 
 @UseGuards(JwtAuthGuard, DataSourceInterceptor)
 @ApiBearerAuth()

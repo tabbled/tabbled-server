@@ -57,6 +57,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             }
 
             request.accountId = accountId
+            request.context = {
+                account: {
+                    id: accountId,
+                    name: user.accounts[0].name
+                },
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    settings: user.settings,
+                    permissions: user.accounts[0].permissions
+                }
+            }
 
             return true
         } catch (e) {

@@ -1,7 +1,21 @@
-export class RenderByIdDto {
+import {ResponseDto} from "../../common/dto/response"
+
+export class RenderByIdRequestDto {
     id: string
     context: any
 }
+
+export class RenderByIdResponseDto extends ResponseDto {
+    contentType: string
+    report: string
+    filename: string
+}
+
+export class RenderByAliasRequestDto {
+    context: any
+}
+
+
 
 export class ReportDto {
     id: string
@@ -13,4 +27,12 @@ export class ReportDto {
     templateExcel?: string
     templateFormat: 'html' | 'excel' | 'html-to-xlsx'
     pageSettings: any
+}
+
+export class GetReportsManyResponse extends ResponseDto {
+    items: {
+        id: string
+        alias: string
+        title: string
+    }[]
 }
