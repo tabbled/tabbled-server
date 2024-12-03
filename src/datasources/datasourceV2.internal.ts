@@ -1,4 +1,4 @@
-import { DataSourceV2Dto } from "./dto/datasourceV2.dto";
+import { DataSourceV2Dto, GetDataManyRequestDto } from "./dto/datasourceV2.dto";
 import { DataSource, QueryRunner } from "typeorm";
 import { Context } from "../entities/context";
 import { Logger } from "@nestjs/common";
@@ -52,8 +52,11 @@ export class InternalDBDatasource {
         return `account_data${this.context.accountId}.${this.config.alias}`
     }
 
-    async getMany(params) {
-        return await this.indexer.getDataMany(params, this.config, this.context)
+    async getMany(params: GetDataManyRequestDto) {
+        if (params.groupBy && params.groupBy.length) {
+            return await this.indexer.getDataManyAndGroup(params, this.config, this.context)
+        } else
+            return await this.indexer.getDataMany(params, this.config, this.context)
     }
 
     async getTotals(params) {

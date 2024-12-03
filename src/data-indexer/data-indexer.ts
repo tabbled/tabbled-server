@@ -139,6 +139,115 @@ export class DataIndexer {
         }
     }
 
+    async getDataManyAndGroup(params: GetDataManyRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context) {
+        if (!params.groupBy || !params.groupBy.length)
+            return null
+
+
+        let index:Index
+        try {
+            index = await this.searchClient.getIndex(this.getIndexUid(dataSourceConfig.alias, context))
+        } catch (e) {
+            throw e
+        }
+
+        let filterBy = params.filterBy
+        const allFields = new Map(dataSourceConfig.fields.map(i => [i.alias, i]))
+
+        if (!filterBy && params.filter) {
+            filterBy = this.convertFilterToSearch(params.filter, allFields)
+        }
+
+        let fields = params.agg.map(f => f.field)
+        fields.push(...params.fields)
+
+        let groupBy: string[] = []
+        for(let i in params.groupBy) {
+            const gr = params.groupBy[i]
+            let field = dataSourceConfig.fields.find(f => f.alias === gr)
+            if (field) {
+                groupBy.push(field.type === 'link' ? field.alias + '.id' : field.alias )
+            }
+        }
+
+        fields.push(...groupBy)
+
+        let searchParams:SearchParams = {
+            attributesToSearchOn: params.searchBy,
+            filter: filterBy,
+            limit: 100000,
+            attributesToRetrieve: fields
+        }
+
+        let res = (await index.search(params.query, searchParams)).hits
+
+        let itemsByGroup = new Map<string, any>()
+
+        for(let i in res) {
+            let item = res[i]
+            let key = getKey(item)
+
+            if (itemsByGroup.has(key)) {
+                let agg = itemsByGroup.get(key)
+                agg.__count += 1
+                params.agg.forEach(ag => {
+                    switch (ag.func) {
+                        case "sum": _.set(agg, ag.field, _.get(item, ag.field) + _.get(item, ag.field) )
+                            break
+                        case "min":
+                            _.set(agg, ag.field, _.min([_.get(item, ag.field), _.get(item, ag.field)]))
+                            break
+                        case "max":
+                            _.set(agg, ag.field, _.max([_.get(item, ag.field), _.get(item, ag.field)]))
+                            break
+                        case "avg":
+                            _.set(agg, `__sum_${ag.field}`, _.get(agg, `__sum_${ag.field}`) + _.get(item, ag.field) )
+                            _.set(agg, ag.field, _.get(agg, `__sum_${ag.field}`) / agg.__count )
+                    }
+                })
+
+
+                itemsByGroup.set(key, agg)
+            } else {
+                let agg = {
+                    __count: 1
+                }
+                params.groupBy.forEach(i => {
+                    _.set(agg, i, _.get(item, i))
+                })
+
+                params.agg.forEach(ag => {
+                    _.set(agg, ag.field, _.get(item, ag.field))
+                    if (ag.func === 'avg') {
+                        _.set(agg, `__sum_${ag.field}`, _.get(item, ag.field))
+                    }
+                })
+                itemsByGroup.set(key, agg)
+            }
+        }
+
+        function getKey(item) {
+            const o = groupBy.map(i => _.get(item, i))
+            return o.join('-')
+        }
+
+        let r = Array.from(itemsByGroup.values())
+
+        if(params.sort?.length) {
+            let s1 = []
+            let s2 = []
+            params.sort.forEach(f=> {
+                let split = f.split(':')
+                s1.push(split[0])
+                s2.push(split[1])
+            })
+            r = _.orderBy(r, s1, s2)
+        }
+        return {
+            items: r.map(i=> this.prepareItemForUser(i, allFields, params.fields, this.timezone, params.formatValues))
+        }
+    }
+
     async getTotals(params: GetTotalDataManyRequestDto, dataSourceConfig: DataSourceV2Dto , context: Context): Promise<GetTotalsResponseDto> {
         if (!params.agg || !params.agg.length) {
             return undefined
@@ -568,7 +677,6 @@ export class DataIndexer {
         let sortable = settings.sortableAttributes
 
         let needUpdate = false
-
         for(const i in sort) {
             const s = sort[i]
 

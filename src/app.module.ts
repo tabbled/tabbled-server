@@ -44,6 +44,7 @@ import { Job } from "./jobs/jobs.entity";
 import { ScheduleModule } from "@nestjs/schedule";
 import { PageEntity } from "./pages/entities/pages.entity";
 import { DatasourceV2Entity } from "./datasources/entities/datasourceV2.entity";
+import { ReportEntity } from "./reports/entities/report.entity";
 
 @Module({
     imports: [
@@ -78,15 +79,15 @@ import { DatasourceV2Entity } from "./datasources/entities/datasourceV2.entity";
                 Variable,
                 Job,
                 PageEntity,
-                DatasourceV2Entity
+                DatasourceV2Entity,
+                ReportEntity
             ],
         }),
         BullModule.forRoot({
             connection: {
                 host: process.env.REDIS_HOST,
                 port: Number(process.env.REDIS_PORT),
-            },
-
+            }
         }),
         ConfigItemModule,
         FunctionsModule,

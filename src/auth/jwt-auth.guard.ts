@@ -58,6 +58,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
             request.accountId = accountId
             request.context = {
+                accountId: accountId,
+                userId: user.id,
                 account: {
                     id: accountId,
                     name: user.accounts[0].name

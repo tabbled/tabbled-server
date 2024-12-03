@@ -309,6 +309,9 @@ export class GetDataManyRequestDto {
     @IsOptional()
     @IsBoolean()
     formatValues?: boolean
+
+    @IsOptional()
+    groupBy?: string[]
 }
 
 export class GetTotalDataManyRequestDto {
