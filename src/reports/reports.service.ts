@@ -12,6 +12,7 @@ import {style} from "./report.style";
 import { DataSourceV2Service } from "../datasources/datasourceV2.service";
 import * as Mustache from "mustache"
 import { ReportEntity } from "./entities/report.entity";
+import * as dayjs from "dayjs";
 
 
 
@@ -284,6 +285,20 @@ export class ReportsService {
             } catch (e) {
                 console.error(e)
                 throw e
+            }
+        }
+
+        if (data.params) {
+            let params = Object.keys(data.params)
+            for(let i in params) {
+                let param = params[i]
+                let config = report.parameters.find(f => f.alias === param)
+                if (config) {
+                    switch (config.type) {
+                        case "date": data.params[param] = dayjs(data.params[param], 'YYYYMMDD').format('DD.MM.YYYY'); break;
+                        case "datetime":  dayjs(data.params[param]).format('DD.MM.YYYY hh:mm:ss'); break;
+                    }
+                }
             }
         }
 
