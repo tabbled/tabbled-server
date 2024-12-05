@@ -196,6 +196,8 @@ export class ReportsController {
                 contentType: rep.contentType,
                 report: Buffer.from(await rep.data.body()).toString('base64'),
                 filename: rep.filename,
+                renderingTime: rep.rendering,
+                preparingTime: rep.preparing
             }
         } catch (e) {
             console.error(e)
@@ -224,6 +226,8 @@ export class ReportsController {
                 contentType: rep.contentType,
                 report: Buffer.from(await rep.data.body()).toString('base64'),
                 filename: rep.filename,
+                renderingTime: rep.rendering,
+                preparingTime: rep.preparing
             }
         } catch (e) {
             console.error(e)

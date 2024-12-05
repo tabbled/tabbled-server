@@ -12,6 +12,8 @@ export class RenderByIdResponseDto extends ResponseDto {
     contentType: string
     report: string
     filename: string
+    renderingTime: number
+    preparingTime: number
 }
 
 export class RenderByAliasRequestDto {
@@ -99,6 +101,8 @@ export class RenderReportResponseDto extends ResponseDto {
     contentType: string
     report: string
     filename: string
+    renderingTime: number
+    preparingTime: number
 }
 
 export class AddReportResponse extends ResponseDto {

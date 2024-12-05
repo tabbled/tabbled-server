@@ -220,6 +220,7 @@ export class ReportsService {
             settings.landscape = report.pageSettings.layout === 'landscape'
         }
 
+        let dsStart = new Date()
         let rep = {
             template: {
                 recipe: output === 'xlsx' ? 'html-to-xlsx' : 'chrome-pdf',
@@ -238,8 +239,11 @@ export class ReportsService {
             data: await this.prepareData(report, ctx)
         }
 
+        let dsPrepared = new Date()
 
         let rendered = await jsreport.render(rep)
+
+        let dsRendered = new Date()
 
         let contentType
         let filename = report.title
@@ -255,11 +259,16 @@ export class ReportsService {
             default:
                 contentType = 'application/blob'
         }
+        console.log(dsStart)
+        console.log(dsPrepared)
+        console.log(dsRendered)
 
         return {
             data: rendered,
             contentType: contentType,
             filename: filename,
+            preparing: dsPrepared.valueOf() - dsStart.valueOf(),
+            rendering: dsRendered.valueOf() - dsPrepared.valueOf()
         }
     }
 
