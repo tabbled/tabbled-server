@@ -232,9 +232,12 @@ export class ReportsService {
                     }
                 } : undefined,
                 chrome: settings,
-                helpers: `function toUpperCase(str) { return str ? str.toUpperCase() : ""; }
+                helpers: `
+                function toUpperCase(str) { return str ? str.toUpperCase() : ""; }
                 function toLowerCase(str) { return str ? str.toLowerCase() : ""; }
-                function join(arr, substr) { return Array.isArray(arr) ? arr.join(substr) : ""; }`
+                function join(arr, substr) { return Array.isArray(arr) ? arr.join(substr) : ""; }
+                function numberFormat(num, digits) { let dig = digits ? Number(digits) : 2; return Number(num).toLocaleString('ru-RU',{ minimumFractionDigits: dig, maximumFractionDigits: dig}) }
+                `
             },
             data: await this.prepareData(report, ctx)
         }
@@ -259,9 +262,6 @@ export class ReportsService {
             default:
                 contentType = 'application/blob'
         }
-        console.log(dsStart)
-        console.log(dsPrepared)
-        console.log(dsRendered)
 
         return {
             data: rendered,
@@ -310,8 +310,6 @@ export class ReportsService {
                 }
             }
         }
-
-        console.log(data)
 
         return data
     }
