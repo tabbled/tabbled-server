@@ -100,10 +100,12 @@ body table th {
     background-color: rgb(248 250 252);
     font-weight: bold;
     text-align: left;
+    white-space: normal;
 }
 
 body table td {
     border: 1px solid rgb(203 213 225);
     text-align: left;
+    white-space: normal;
 }
 `

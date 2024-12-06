@@ -182,6 +182,7 @@ export class DataIndexer {
         let res = (await index.search(params.query, searchParams)).hits
 
         let itemsByGroup = new Map<string, any>()
+        let totals = {}
 
         for(let i in res) {
             let item = res[i]
@@ -192,13 +193,14 @@ export class DataIndexer {
                 agg.__count += 1
                 params.agg.forEach(ag => {
                     switch (ag.func) {
-                        case "sum": _.set(agg, ag.field, _.get(item, ag.field) + _.get(item, ag.field) )
+                        case "sum":
+                            _.set(agg, ag.field, _.get(agg, ag.field, 0) + _.get(item, ag.field, 0) )
                             break
                         case "min":
-                            _.set(agg, ag.field, _.min([_.get(item, ag.field), _.get(item, ag.field)]))
+                            _.set(agg, ag.field, _.min([_.get(agg, ag.field), _.get(item, ag.field, 0)]))
                             break
                         case "max":
-                            _.set(agg, ag.field, _.max([_.get(item, ag.field), _.get(item, ag.field)]))
+                            _.set(agg, ag.field, _.max([_.get(agg, ag.field), _.get(item, ag.field, 0)]))
                             break
                         case "avg":
                             _.set(agg, `__sum_${ag.field}`, _.get(agg, `__sum_${ag.field}`) + _.get(item, ag.field) )
@@ -243,8 +245,28 @@ export class DataIndexer {
             })
             r = _.orderBy(r, s1, s2)
         }
+
+        for(let i in params.agg) {
+            let a = params.agg[i]
+            switch (a.func) {
+                case "sum": totals[a.field] = _.sumBy(res, s => _.get(s, a.field)); break;
+                case "avg": totals[a.field] = _.meanBy(res, s => _.get(s, a.field)); break;
+                case "min": let min = _.minBy(res, s => _.get(s, a.field));
+                    totals[a.field] = min ? _.get(min, a.field) : null
+                    break;
+                case "max":
+                    let max = _.maxBy(res, s => _.get(s, a.field));
+                    totals[a.field] = max ? _.get(max, a.field) : null
+                    break;
+                default:
+                    totals[a.field] = 0
+            }
+        }
+
         return {
-            items: r.map(i=> this.prepareItemForUser(i, allFields, params.fields, this.timezone, params.formatValues))
+            items: r.map(i=> this.prepareItemForUser(i, allFields, params.fields, this.timezone, params.formatValues)),
+            totalCount: r.length,
+            totals
         }
     }
 

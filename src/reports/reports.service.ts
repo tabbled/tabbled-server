@@ -311,6 +311,8 @@ export class ReportsService {
             }
         }
 
+        console.log(data)
+
         return data
     }
 
