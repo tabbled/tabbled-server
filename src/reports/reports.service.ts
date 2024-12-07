@@ -50,12 +50,17 @@ export class ReportsService {
         return out
     }
 
-    async getManyV2(params: {forPage?: string}, context: Context) {
+    async getManyV2(params: {forPage?: string, search?: string}, context: Context) {
         const rep = this.datasource.getRepository(ReportEntity)
-        let items = await rep
+        let query = rep
             .createQueryBuilder()
             .where(`deleted_at IS NULL AND account_id = ${context.accountId}`)
-            .getMany()
+
+        if (params.search) {
+            query.andWhere(`(title ILIKE '%${params.search}%' OR description ILIKE '%${params.search}%')`)
+        }
+
+        let items = await query.getMany()
 
         if (params.forPage) {
             items = items.filter(r => r.pages.includes(params.forPage))
@@ -428,5 +433,35 @@ export class ReportsService {
         }
 
         return "<style>" + style + "</style><body>" + html + "</body>"
+    }
+
+    async deleteById(id: number, context: Context) {
+        let reportOld = await this.getByIdV2(id, context)
+        if (!reportOld)
+            throw "Not found"
+
+        const rep = this.datasource.getRepository(ReportEntity)
+        await rep.createQueryBuilder()
+            .update()
+            .set({ deletedBy: context.userId, deletedAt: new Date()})
+            .where({id: id})
+            .execute()
+    }
+
+    async duplicateById(id: number, context: Context) {
+        console.log(context)
+        let reportOld = await this.getByIdV2(id, context)
+        if (!reportOld)
+            throw "Not found"
+
+        reportOld.deletedAt = null
+        reportOld.deletedBy = null
+        reportOld.title += ' (duplicate)'
+        reportOld.createdBy = context.userId
+        reportOld.createdAt = new Date()
+        reportOld.updatedAt = new Date()
+        reportOld.updatedBy = context.userId
+
+        await this.add(reportOld, context)
     }
 }

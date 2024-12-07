@@ -1,6 +1,6 @@
 import {
     Body,
-    Controller,
+    Controller, Delete,
     Get, HttpCode,
     HttpException,
     HttpStatus, Param, Post, Query,
@@ -37,10 +37,11 @@ export class ReportsController {
     @ApiOperation({ summary: 'Get many reports' })
     async getMany(
         @Req() req: Request,
-        @Query('page') page: string
+        @Query('page') page: string,
+        @Query('search') search: string
     ): Promise<GetReportsManyResponse> {
         try {
-            let resV1 = await this.service.getManyV2({ forPage: page }, req['context'])
+            let resV1 = await this.service.getManyV2({ forPage: page, search: search }, req['context'])
 
             let items = resV1.map(f => {
                 return {
@@ -272,7 +273,7 @@ export class ReportsController {
     @Post('/:id')
     @HttpCode(200)
     @ApiOperation({ summary: 'Update report by id' })
-    async updateByAlias(
+    async updateById(
         @Req() req: Request,
         @Body() body: ReportV2Dto,
         @Param('id') id: number
@@ -281,6 +282,58 @@ export class ReportsController {
             await this.service.updateById(id, body, req['context'])
             return {
                 statusCode: 200
+            }
+        } catch (e) {
+            console.error(e)
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Post('/:id/duplicate')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Duplicate report by id' })
+    async duplicateById(
+        @Req() req: Request,
+        @Body() body: any,
+        @Param('id') id: number
+    ): Promise<ResponseDto> {
+        try {
+            await this.service.duplicateById(id, req['context'])
+            return {
+                statusCode: HttpStatus.NO_CONTENT
+            }
+        } catch (e) {
+            console.error(e)
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Delete('/:id')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Delete report by id' })
+    async deleteById(
+        @Req() req: Request,
+        @Body() body: any,
+        @Param('id') id: number
+    ): Promise<ResponseDto> {
+        try {
+            await this.service.deleteById(id, req['context'])
+            return {
+                statusCode: HttpStatus.NO_CONTENT
             }
         } catch (e) {
             console.error(e)
