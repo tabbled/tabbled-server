@@ -13,6 +13,7 @@ import { DataSourceV2Service } from "../datasources/datasourceV2.service";
 import * as Mustache from "mustache"
 import { ReportEntity } from "./entities/report.entity";
 import * as dayjs from "dayjs";
+import * as cheerio from 'cheerio';
 
 
 
@@ -315,6 +316,7 @@ export class ReportsService {
                 }
             }
         }
+        console.log(data)
 
         return data
     }
@@ -403,6 +405,14 @@ export class ReportsService {
     }
 
     prepareHtml(html) : string {
+        // Replacing parameters with mustache
+        const $ = cheerio.load(html);
+        Array.from($('parameter')).forEach(el => {
+            $(`parameter[alias="${el.attribs.alias}"]`).replaceWith(`{{${el.attribs.alias}}}`)
+        })
+
+        html = $.html()
+
         let matches = html.matchAll(/<table[^>]*dataset="([^"]*)"/gm)
 
         let datasets = []
@@ -431,7 +441,6 @@ export class ReportsService {
                 + add + html.slice(st.index + st[1].length + compensation);
             compensation += add.length
         }
-
         return "<style>" + style + "</style><body>" + html + "</body>"
     }
 
