@@ -14,7 +14,7 @@ import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { ReportsService } from "./reports.service";
 import {
     AddReportResponse, GetOneByAliasDto, GetParamsByAliasDto,
-    GetReportsManyResponse, PreviewRequestDto,
+    GetReportsManyResponse, PostprocessReportResponseDto, PostprocessRequestDto, PreviewRequestDto,
     RenderByIdRequestDto, RenderByIdResponseDto,
     RenderReportResponseDto, ReportV2Dto
 } from "./dto/report.dto";
@@ -241,6 +241,32 @@ export class ReportsController {
         }
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Version(['2'])
+    @Post('/postprocess')
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Run script from report postprocess' })
+    async postprocess(
+        @Req() req: Request,
+        @Body() body: PostprocessRequestDto
+    ): Promise<PostprocessReportResponseDto> {
+        try {
+            console.log('postprocess')
+            const data = await this.service.runPostprocess(body.report, body.params, req['context'])
+            return {
+                statusCode: 200,
+                data: data
+            }
+        } catch (e) {
+            console.error(e)
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: e.toString(),
+                }, HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
 
     @UseGuards(JwtAuthGuard)
     @Version(['2'])

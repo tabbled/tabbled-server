@@ -248,6 +248,18 @@ export class ReportsService {
             data: await this.prepareData(report, ctx)
         }
 
+        try {
+            let res = await this.functionsService.runScript({
+                    context: ctx,
+                    script: report.postprocessing,
+                }
+            )
+            rep.data = Object.assign(rep.data, res)
+        } catch (e) {
+            console.error(e)
+            throw `Error while running the preparing script - ${e.toString()}`
+        }
+
         let dsPrepared = new Date()
 
         let rendered = await jsreport.render(rep)
@@ -275,6 +287,23 @@ export class ReportsService {
             filename: filename,
             preparing: dsPrepared.valueOf() - dsStart.valueOf(),
             rendering: dsRendered.valueOf() - dsPrepared.valueOf()
+        }
+    }
+
+    async runPostprocess(report: ReportV2Dto, params: any, context: any) {
+        let data = await this.prepareData(report, context)
+        data = Object.assign(data, context)
+
+        try {
+            let res = await this.functionsService.runScript({
+                    context: data,
+                    script: report.postprocessing,
+                }
+            )
+            return Object.assign(data, res)
+        } catch (e) {
+            console.error(e)
+            throw `Error while running the preparing script - ${e.toString()}`
         }
     }
 
@@ -316,7 +345,6 @@ export class ReportsService {
                 }
             }
         }
-        console.log(data)
 
         return data
     }
@@ -425,7 +453,7 @@ export class ReportsService {
         let idx = 0
         let compensation = 0
         for (const st of start) {
-            let add = `{{#each ${datasets[idx]}.items}}`
+            let add = `{{#each ${datasets[idx]}}}`
             html = html.slice(0, st.index+st[1].length + compensation)
                 + add + html.slice(st.index+st[1].length + compensation);
             compensation += add.length

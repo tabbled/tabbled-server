@@ -76,6 +76,7 @@ export class ReportV2Dto {
     html?: string
     xlsx?: string
     style?: string
+    postprocessing?: string
     datasets: DatasetDto[]
     pages: string[]
     pageSettings: {
@@ -97,12 +98,23 @@ export class PreviewRequestDto {
     output: 'xlsx' | 'pdf'
 }
 
+export class PostprocessRequestDto {
+    report: ReportV2Dto
+    params: {
+        [key in string]: any
+    }
+}
+
 export class RenderReportResponseDto extends ResponseDto {
     contentType: string
     report: string
     filename: string
     renderingTime: number
     preparingTime: number
+}
+
+export class PostprocessReportResponseDto extends ResponseDto {
+    data: any
 }
 
 export class AddReportResponse extends ResponseDto {
