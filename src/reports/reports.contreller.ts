@@ -195,7 +195,7 @@ export class ReportsController {
             return {
                 statusCode: 200,
                 contentType: rep.contentType,
-                report: Buffer.from(await rep.data.body()).toString('base64'),
+                report: rep.data.toString('base64'),
                 filename: rep.filename,
                 renderingTime: rep.rendering,
                 preparingTime: rep.preparing
@@ -222,10 +222,11 @@ export class ReportsController {
     ): Promise<RenderReportResponseDto> {
         try {
             let rep = await this.service.renderV2(body.report, body.params, body.output, req['context'])
+
             return {
                 statusCode: 200,
                 contentType: rep.contentType,
-                report: Buffer.from(await rep.data.body()).toString('base64'),
+                report: rep.data.toString('base64'),
                 filename: rep.filename,
                 renderingTime: rep.rendering,
                 preparingTime: rep.preparing
@@ -251,7 +252,6 @@ export class ReportsController {
         @Body() body: PostprocessRequestDto
     ): Promise<PostprocessReportResponseDto> {
         try {
-            console.log('postprocess')
             const data = await this.service.runPostprocess(body.report, body.params, req['context'])
             return {
                 statusCode: 200,

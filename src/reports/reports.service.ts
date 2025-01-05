@@ -14,6 +14,7 @@ import * as Mustache from "mustache"
 import { ReportEntity } from "./entities/report.entity";
 import * as dayjs from "dayjs";
 import * as cheerio from 'cheerio';
+import { ReportGenerator } from "./report.generator";
 
 
 
@@ -25,7 +26,11 @@ export class ReportsService {
         private datasource: DataSource,
         private datasourceService: DataSourceV2Service,
         private configService: ConfigService
-    ) {}
+    ) {
+        this.generator = new ReportGenerator()
+    }
+
+    private generator: ReportGenerator
 
     async getManyV1(params: {forPage?: string}, context: Context) {
         const rep = this.datasource.getRepository(ConfigItem)
@@ -197,26 +202,25 @@ export class ReportsService {
     }
 
     async renderV2(report: ReportV2Dto, params: any, output:  'xlsx' | 'pdf' = 'pdf', context: Context) {
-        const jsreport = client(this.configService.get<string>('JSREPORT_URL'))
-        //console.log(report)
-
         let ctx = Object.assign({}, context)
         ctx.params = params
 
         let settings = {
-            marginTop: 40,
-            marginBottom: 40,
-            marginLeft: 80,
-            marginRight: 40,
+            margin: {
+                top: 40,
+                bottom: 40,
+                left: 80,
+                right: 40
+            },
             format: "A4",
             landscape: false
         }
         if (report.pageSettings) {
             if (report.pageSettings.margin === 'custom') {
-                settings.marginRight = report.pageSettings.marginRight
-                settings.marginLeft = report.pageSettings.marginLeft
-                settings.marginTop = report.pageSettings.marginTop
-                settings.marginBottom = report.pageSettings.marginBottom
+                settings.margin.right = report.pageSettings.marginRight
+                settings.margin.left = report.pageSettings.marginLeft
+                settings.margin.top = report.pageSettings.marginTop
+                settings.margin.bottom = report.pageSettings.marginBottom
             }
             if (report.pageSettings.size) {
                 settings.format = report.pageSettings.size
@@ -227,34 +231,15 @@ export class ReportsService {
         }
 
         let dsStart = new Date()
-        let rep = {
-            template: {
-                recipe: output === 'xlsx' ? 'html-to-xlsx' : 'chrome-pdf',
-                content: this.prepareHtml(report.html),
-                engine: 'handlebars',
-                xlsx: output === 'xlsx' ? {
-                    templateAsset: {
-                        content: '<table></table>{{{xlsxPrint}}}',
-                    }
-                } : undefined,
-                chrome: settings,
-                helpers: `
-                function toUpperCase(str) { return str ? str.toUpperCase() : ""; }
-                function toLowerCase(str) { return str ? str.toLowerCase() : ""; }
-                function join(arr, substr) { return Array.isArray(arr) ? arr.join(substr) : ""; }
-                function numberFormat(num, digits) { let dig = digits ? Number(digits) : 2; return Number(num).toLocaleString('ru-RU',{ minimumFractionDigits: dig, maximumFractionDigits: dig}) }
-                `
-            },
-            data: await this.prepareData(report, ctx)
-        }
 
+        let data = await this.prepareData(report, ctx)
         try {
             let res = await this.functionsService.runScript({
                     context: ctx,
                     script: report.postprocessing,
                 }
             )
-            rep.data = Object.assign(rep.data, res)
+            data = Object.assign(data, res)
         } catch (e) {
             console.error(e)
             throw `Error while running the preparing script - ${e.toString()}`
@@ -262,7 +247,12 @@ export class ReportsService {
 
         let dsPrepared = new Date()
 
-        let rendered = await jsreport.render(rep)
+        let rendered = await this.generator.render({
+            output: output,
+            template: this.prepareHtml(report.html),
+            data: data,
+            settings: settings
+        })
 
         let dsRendered = new Date()
 
@@ -291,7 +281,8 @@ export class ReportsService {
     }
 
     async runPostprocess(report: ReportV2Dto, params: any, context: any) {
-        let data = await this.prepareData(report, context)
+        let ctx = Object.assign({params: params},  context)
+        let data = await this.prepareData(report, ctx)
         data = Object.assign(data, context)
 
         try {
@@ -308,6 +299,7 @@ export class ReportsService {
     }
 
     async prepareData(report: ReportV2Dto, context: any) {
+        console.log(context)
         if(!report.datasets || !report.datasets.length) {
             return
         }
@@ -436,7 +428,8 @@ export class ReportsService {
         // Replacing parameters with mustache
         const $ = cheerio.load(html);
         Array.from($('parameter')).forEach(el => {
-            $(`parameter[alias="${el.attribs.alias}"]`).replaceWith(`{{${el.attribs.alias}}}`)
+            $(`parameter[alias="${el.attribs.alias}"]`)
+                .replaceWith(`{{${el.attribs.alias}${ el.attribs.filter ? ' | ' + el.attribs.filter : '' }}}`)
         })
 
         html = $.html()
@@ -453,7 +446,7 @@ export class ReportsService {
         let idx = 0
         let compensation = 0
         for (const st of start) {
-            let add = `{{#each ${datasets[idx]}}}`
+            let add = `{% for item in ${datasets[idx]} %}`
             html = html.slice(0, st.index+st[1].length + compensation)
                 + add + html.slice(st.index+st[1].length + compensation);
             compensation += add.length
@@ -463,7 +456,7 @@ export class ReportsService {
         compensation = 0
         let end = html.matchAll(/(<\/td><\/tr>)(<\/tbody>)/gm)
         for (const st of end) {
-            let add = `{{/each}}`
+            let add = `{% endfor %}`
 
             html = html.slice(0, st.index + st[1].length + compensation)
                 + add + html.slice(st.index + st[1].length + compensation);
@@ -486,7 +479,6 @@ export class ReportsService {
     }
 
     async duplicateById(id: number, context: Context) {
-        console.log(context)
         let reportOld = await this.getByIdV2(id, context)
         if (!reportOld)
             throw "Not found"
