@@ -195,7 +195,7 @@ export class ReportsController {
             return {
                 statusCode: 200,
                 contentType: rep.contentType,
-                report: rep.data.toString('base64'),
+                report: rep.data,
                 filename: rep.filename,
                 renderingTime: rep.rendering,
                 preparingTime: rep.preparing
@@ -226,7 +226,7 @@ export class ReportsController {
             return {
                 statusCode: 200,
                 contentType: rep.contentType,
-                report: rep.data.toString('base64'),
+                report: rep.data,
                 filename: rep.filename,
                 renderingTime: rep.rendering,
                 preparingTime: rep.preparing
