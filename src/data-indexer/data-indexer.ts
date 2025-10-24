@@ -386,7 +386,7 @@ export class DataIndexer {
         docs = await this.replaceLinkedDataToItems(params.dataSourceConfig, docs, context)
 
         let taskUid = (await index.addDocuments(docs)).taskUid
-        let task = await this.searchClient.waitForTask(taskUid, {timeOutMs: 60 * 1000})
+        let task = await this.searchClient.waitForTask(taskUid, {timeOutMs: 60 * 60 * 1000})
         if (task.status !== 'succeeded')
             throw task.error
 
